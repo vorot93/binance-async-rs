@@ -1,7 +1,7 @@
 use errors::*;
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde_json::Value;
 
 pub fn build_request(parameters: &BTreeMap<String, String>) -> String {
     let mut request = String::new();
@@ -19,28 +19,25 @@ pub fn build_signed_request(mut parameters: BTreeMap<String, String>, recv_windo
         parameters.insert("recvWindow".into(), recv_window.to_string());
     }
 
-    if let Ok(timestamp) = get_timestamp() {
-        parameters.insert("timestamp".into(), timestamp.to_string());
+    let timestamp = get_timestamp()?;
+    parameters.insert("timestamp".into(), timestamp.to_string());
 
-        let mut request = String::new();
-        for (key, value) in &parameters {
-            let param = format!("{}={}&", key, value);
-            request.push_str(param.as_ref());
-        }
-        request.pop(); // remove last &
-
-        Ok(request)
-    } else {
-         bail!("Failed to get timestamp")
+    let mut request = String::new();
+    for (key, value) in &parameters {
+        let param = format!("{}={}&", key, value);
+        request.push_str(param.as_ref());
     }
+    request.pop(); // remove last &
+
+    Ok(request)
 }
 
-pub fn to_i64(v: &Value) -> i64 { 
-    v.as_i64().unwrap() 
+pub fn to_i64(v: &Value) -> i64 {
+    v.as_i64().unwrap()
 }
 
-pub fn to_f64(v: &Value) -> f64 { 
-    v.as_str().unwrap().parse().unwrap() 
+pub fn to_f64(v: &Value) -> f64 {
+    v.as_str().unwrap().parse().unwrap()
 }
 
 fn get_timestamp() -> Result<u64> {
