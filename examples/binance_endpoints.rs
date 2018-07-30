@@ -1,9 +1,6 @@
 extern crate binance;
 
-use binance::api::*;
-use binance::general::*;
-use binance::account::*;
-use binance::market::*;
+use binance::{Account, Binance, General, Market};
 
 fn main() {
     general();
@@ -12,7 +9,7 @@ fn main() {
 }
 
 fn general() {
-    let general: General = Binance::new(None, None);
+    let general = Binance::<General>::new();
 
     let ping = general.ping();
     match ping {
@@ -28,10 +25,10 @@ fn general() {
 }
 
 fn account() {
-    let api_key = Some("YOUR_API_KEY".into());
-    let secret_key = Some("YOUR_SECRET_KEY".into());
+    let api_key = "YOUR_API_KEY";
+    let secret_key = "YOUR_SECRET_KEY";
 
-    let account: Account = Binance::new(api_key, secret_key);
+    let account = Binance::<Account>::new(&api_key, &secret_key);
 
     match account.get_account() {
         Ok(answer) => println!("{:?}", answer.balances),
@@ -86,7 +83,7 @@ fn account() {
 }
 
 fn market_data() {
-    let market: Market = Binance::new(None, None);
+    let market = Binance::<Market>::new();
 
     // Order book
     match market.get_depth("BNBETH") {
@@ -114,10 +111,7 @@ fn market_data() {
 
     // Best price/qty on the order book for ONE symbol
     match market.get_book_ticker("BNBETH") {
-        Ok(answer) => println!(
-            "Bid Price: {}, Ask Price: {}",
-            answer.bid_price, answer.ask_price
-        ),
+        Ok(answer) => println!("Bid Price: {}, Ask Price: {}", answer.bid_price, answer.ask_price),
         Err(e) => println!("Error: {}", e),
     }
 

@@ -21,7 +21,7 @@ impl Scope for Market {
 }
 
 impl Scope for UserStream {
-    type Auth = ();
+    type Auth = ApiKeyAuth;
 }
 
 pub enum General {}
@@ -62,9 +62,9 @@ impl Binance<Market> {
 }
 
 impl Binance<UserStream> {
-    pub fn new() -> Self {
+    pub fn new(api_key: &str, secret_key: &str) -> Self {
         Binance {
-            transport: Transport::<()>::new(),
+            transport: Transport::<ApiKeyAuth>::new(api_key, secret_key),
             recv_window: 5000,
         }
     }

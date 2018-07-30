@@ -1,10 +1,7 @@
 extern crate binance;
-
-use binance::api::*;
-use binance::userstream::*;
+use binance::model::{AccountUpdateEvent, DayTickerEvent, DepthOrderBookEvent, KlineEvent, OrderBook, OrderTradeEvent, TradesEvent};
 use binance::websockets::*;
-use binance::model::{AccountUpdateEvent, KlineEvent, OrderTradeEvent,
-                     TradesEvent, DayTickerEvent, OrderBook, DepthOrderBookEvent};
+use binance::{Binance, UserStream};
 
 fn main() {
     user_stream();
@@ -15,8 +12,10 @@ fn main() {
 }
 
 fn user_stream() {
-    let api_key_user = Some("YOUR_API_KEY".into());
-    let user_stream: UserStream = Binance::new(api_key_user.clone(), None);
+    let api_key_user = "YOUR_API_KEY";
+    let api_secret_user = "YOUR_API_SECRET";
+
+    let user_stream = Binance::<UserStream>::new(api_key_user, api_secret_user);
 
     if let Ok(answer) = user_stream.start() {
         println!("Data Stream Started ...");
@@ -42,10 +41,7 @@ fn user_stream_websocket() {
     impl UserStreamEventHandler for WebSocketHandler {
         fn account_update_handler(&self, event: &AccountUpdateEvent) {
             for balance in &event.balance {
-                println!(
-                    "Asset: {}, free: {}, locked: {}",
-                    balance.asset, balance.free, balance.locked
-                );
+                println!("Asset: {}, free: {}, locked: {}", balance.asset, balance.free, balance.locked);
             }
         }
 
@@ -57,8 +53,9 @@ fn user_stream_websocket() {
         }
     }
 
-    let api_key_user = Some("YOUR_KEY".into());
-    let user_stream: UserStream = Binance::new(api_key_user, None);
+    let api_key_user = "YOUR_KEY";
+    let api_secret_user = "YOUR_SECRET";
+    let user_stream = Binance::<UserStream>::new(api_key_user, api_secret_user);
 
     if let Ok(answer) = user_stream.start() {
         let listen_key = answer.listen_key;
@@ -77,24 +74,15 @@ fn market_websocket() {
 
     impl MarketEventHandler for WebSocketHandler {
         fn aggregated_trades_handler(&self, event: &TradesEvent) {
-            println!(
-                "Symbol: {}, price: {}, qty: {}",
-                event.symbol, event.price, event.qty
-            );
+            println!("Symbol: {}, price: {}, qty: {}", event.symbol, event.price, event.qty);
         }
 
         fn depth_orderbook_handler(&self, event: &DepthOrderBookEvent) {
-            println!(
-                "Symbol: {}, Bids: {:?}, Ask: {:?}",
-                event.symbol, event.bids, event.asks
-            );
+            println!("Symbol: {}, Bids: {:?}, Ask: {:?}", event.symbol, event.bids, event.asks);
         }
 
         fn partial_orderbook_handler(&self, order_book: &OrderBook) {
-            println!(
-                "last_update_id: {}, Bids: {:?}, Ask: {:?}",
-                order_book.last_update_id, order_book.bids, order_book.asks
-            );
+            println!("last_update_id: {}, Bids: {:?}, Ask: {:?}", order_book.last_update_id, order_book.bids, order_book.asks);
         }
     }
 
@@ -112,10 +100,7 @@ fn all_trades_websocket() {
     impl DayTickerEventHandler for WebSocketHandler {
         fn day_ticker_handler(&self, events: &[DayTickerEvent]) {
             for event in events {
-                println!(
-                    "Symbol: {}, price: {}, qty: {}",
-                    event.symbol, event.best_bid, event.best_bid_qty
-                );
+                println!("Symbol: {}, price: {}, qty: {}", event.symbol, event.best_bid, event.best_bid_qty);
             }
         }
     }
@@ -133,10 +118,7 @@ fn kline_websocket() {
 
     impl KlineEventHandler for WebSocketHandler {
         fn kline_handler(&self, event: &KlineEvent) {
-            println!(
-                "Symbol: {}, high: {}, low: {}",
-                event.kline.symbol, event.kline.low, event.kline.high
-            );
+            println!("Symbol: {}, high: {}, low: {}", event.kline.symbol, event.kline.low, event.kline.high);
         }
     }
 
