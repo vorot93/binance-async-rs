@@ -1,9 +1,10 @@
+use serde::Deserialize;
+use serde_json::{from_reader, from_value, Value};
+
+use errors::{BinanceResponse, Result};
 use hex::encode as hex_encode;
-use errors::*;
-use reqwest;
-use reqwest::{Response, StatusCode};
 use reqwest::header::{ContentType, Headers, UserAgent};
-use std::io::Read;
+use reqwest::{self, Response};
 use ring::{digest, hmac};
 
 static API1_HOST: &'static str = "https://www.binance.com";
@@ -22,43 +23,47 @@ impl Client {
         }
     }
 
-    pub fn get_signed(&self, endpoint: &str, request: &str) -> Result<(String)> {
+    pub fn get_signed<T>(&self, endpoint: &str, request: &str) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
         let url = self.sign_request(endpoint, request);
         let client = reqwest::Client::new();
-        let response = client
-            .get(url.as_str())
-            .headers(self.build_headers(true))
-            .send()?;
+        let response = client.get(url.as_str()).headers(self.build_headers(true)).send()?;
 
         self.handler(response)
     }
 
-    pub fn post_signed(&self, endpoint: &str, request: &str) -> Result<(String)> {
+    pub fn post_signed<T>(&self, endpoint: &str, request: &str) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
         let url = self.sign_request(endpoint, request);
         let client = reqwest::Client::new();
-        let response = client
-            .post(url.as_str())
-            .headers(self.build_headers(true))
-            .send()?;
+        let response = client.post(url.as_str()).headers(self.build_headers(true)).send()?;
 
         self.handler(response)
     }
 
-    pub fn delete_signed(&self, endpoint: &str, request: &str) -> Result<(String)> {
+    pub fn delete_signed<T>(&self, endpoint: &str, request: &str) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
         let url = self.sign_request(endpoint, request);
         let client = reqwest::Client::new();
-        let response = client
-            .delete(url.as_str())
-            .headers(self.build_headers(true))
-            .send()?;
+        let response = client.delete(url.as_str()).headers(self.build_headers(true)).send()?;
 
         self.handler(response)
     }
 
-    pub fn get(&self, endpoint: &str, request: &str) -> Result<(String)> {
+    pub fn get<'a, T, O>(&self, endpoint: &str, request: O) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+        O: Into<Option<&'a str>>,
+    {
         let mut url: String = format!("{}{}", API1_HOST, endpoint);
-        if !request.is_empty() {
-            url.push_str(format!("?{}", request).as_str());
+        for query in request.into() {
+            url.push_str(format!("?{}", query).as_str());
         }
 
         let response = reqwest::get(url.as_str())?;
@@ -66,42 +71,40 @@ impl Client {
         self.handler(response)
     }
 
-    pub fn post(&self, endpoint: &str) -> Result<(String)> {
+    pub fn post<T>(&self, endpoint: &str) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
         let url: String = format!("{}{}", API1_HOST, endpoint);
 
         let client = reqwest::Client::new();
-        let response = client
-            .post(url.as_str())
-            .headers(self.build_headers(false))
-            .send()?;
+        let response = client.post(url.as_str()).headers(self.build_headers(false)).send()?;
 
         self.handler(response)
     }
 
-    pub fn put(&self, endpoint: &str, listen_key: &str) -> Result<(String)> {
+    pub fn put<T>(&self, endpoint: &str, listen_key: &str) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
         let url: String = format!("{}{}", API1_HOST, endpoint);
         let data: String = format!("listenKey={}", listen_key);
 
         let client = reqwest::Client::new();
-        let response = client
-            .put(url.as_str())
-            .headers(self.build_headers(false))
-            .body(data)
-            .send()?;
+        let response = client.put(url.as_str()).headers(self.build_headers(false)).body(data).send()?;
 
         self.handler(response)
     }
 
-    pub fn delete(&self, endpoint: &str, listen_key: &str) -> Result<(String)> {
+    pub fn delete<T>(&self, endpoint: &str, listen_key: &str) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
         let url: String = format!("{}{}", API1_HOST, endpoint);
         let data: String = format!("listenKey={}", listen_key);
 
         let client = reqwest::Client::new();
-        let response = client
-            .delete(url.as_str())
-            .headers(self.build_headers(false))
-            .body(data)
-            .send()?;
+        let response = client.delete(url.as_str()).headers(self.build_headers(false)).body(data).send()?;
 
         self.handler(response)
     }
@@ -129,28 +132,13 @@ impl Client {
         custon_headers
     }
 
-    fn handler(&self, mut response: Response) -> Result<(String)> {
-        match response.status() {
-            StatusCode::Ok => {
-                let mut body = String::new();
-                response.read_to_string(&mut body)?;
-                Ok(body)
-            }
-            StatusCode::InternalServerError => {
-                bail!("Internal Server Error");
-            }
-            StatusCode::ServiceUnavailable => {
-                bail!("Service Unavailable");
-            }
-            StatusCode::Unauthorized => {
-                bail!("Unauthorized");
-            }
-            StatusCode::BadRequest => {
-                bail!(format!("Bad Request: {:?}", response));
-            }
-            s => {
-                bail!(format!("Received response: {:?}", s));
-            }
-        }
+    fn handler<T>(&self, response: Response) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let ret: Value = from_reader(response)?;
+        debug!("Response from binance is {:?}", ret);
+        let ret: BinanceResponse<T> = from_value(ret)?;
+        Ok(ret.to_result()?)
     }
 }

@@ -1,9 +1,8 @@
-use util::*;
-use model::*;
 use client::*;
-use errors::*;
+use errors::{BinanceError, Result};
+use model::*;
 use std::collections::BTreeMap;
-use serde_json::from_str;
+use util::*;
 
 static ORDER_TYPE_LIMIT: &'static str = "LIMIT";
 static ORDER_TYPE_MARKET: &'static str = "MARKET";
@@ -34,14 +33,13 @@ impl Account {
         let parameters: BTreeMap<String, String> = BTreeMap::new();
 
         let request = build_signed_request(parameters, self.recv_window)?;
-        let data = self.client.get_signed("/api/v3/account", &request)?;
-        let account_info: AccountInformation = from_str(data.as_str())?;
+        let account_info: AccountInformation = self.client.get_signed("/api/v3/account", &request)?;
 
         Ok(account_info)
     }
 
     // Balance for ONE Asset
-    pub fn get_balance<S>(&self, asset: S) -> Result<(Balance)>
+    pub fn get_balance<S>(&self, asset: S) -> Result<Balance>
     where
         S: Into<String>,
     {
@@ -53,14 +51,14 @@ impl Account {
                         return Ok(balance);
                     }
                 }
-                bail!("Asset not found");
+                Err(BinanceError::AssetsNotFound)?
             }
             Err(e) => Err(e),
         }
     }
 
     // Current open orders for ONE symbol
-    pub fn get_open_orders<S>(&self, symbol: S) -> Result<(Vec<Order>)>
+    pub fn get_open_orders<S>(&self, symbol: S) -> Result<Vec<Order>>
     where
         S: Into<String>,
     {
@@ -68,25 +66,21 @@ impl Account {
         parameters.insert("symbol".into(), symbol.into());
 
         let request = build_signed_request(parameters, self.recv_window)?;
-        let data = self.client.get_signed("/api/v3/openOrders", &request)?;
-        let order: Vec<Order> = from_str(data.as_str())?;
-
-        Ok(order)
+        let orders: Vec<Order> = self.client.get_signed("/api/v3/openOrders", &request)?;
+        Ok(orders)
     }
 
     // All current open orders
-    pub fn get_all_open_orders(&self) -> Result<(Vec<Order>)> {
+    pub fn get_all_open_orders(&self) -> Result<Vec<Order>> {
         let parameters: BTreeMap<String, String> = BTreeMap::new();
 
         let request = build_signed_request(parameters, self.recv_window)?;
-        let data = self.client.get_signed("/api/v3/openOrders", &request)?;
-        let order: Vec<Order> = from_str(data.as_str())?;
-
-        Ok(order)
+        let orders: Vec<Order> = self.client.get_signed("/api/v3/openOrders", &request)?;
+        Ok(orders)
     }
 
     // Check an order's status
-    pub fn order_status<S>(&self, symbol: S, order_id: u64) -> Result<(Order)>
+    pub fn order_status<S>(&self, symbol: S, order_id: u64) -> Result<Order>
     where
         S: Into<String>,
     {
@@ -95,9 +89,7 @@ impl Account {
         parameters.insert("orderId".into(), order_id.to_string());
 
         let request = build_signed_request(parameters, self.recv_window)?;
-        let data = self.client.get_signed(API_V3_ORDER, &request)?;
-        let order: Order = from_str(data.as_str())?;
-
+        let order: Order = self.client.get_signed(API_V3_ORDER, &request)?;
         Ok(order)
     }
 
@@ -117,8 +109,7 @@ impl Account {
         };
         let order = self.build_order(buy);
         let request = build_signed_request(order, self.recv_window)?;
-        let data = self.client.post_signed(API_V3_ORDER, &request)?;
-        let transaction: Transaction = from_str(data.as_str())?;
+        let transaction: Transaction = self.client.post_signed(API_V3_ORDER, &request)?;
 
         Ok(transaction)
     }
@@ -139,8 +130,7 @@ impl Account {
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
-        let data = self.client.post_signed(API_V3_ORDER, &request)?;
-        let transaction: Transaction = from_str(data.as_str())?;
+        let transaction: Transaction = self.client.post_signed(API_V3_ORDER, &request)?;
 
         Ok(transaction)
     }
@@ -161,8 +151,7 @@ impl Account {
         };
         let order = self.build_order(buy);
         let request = build_signed_request(order, self.recv_window)?;
-        let data = self.client.post_signed(API_V3_ORDER, &request)?;
-        let transaction: Transaction = from_str(data.as_str())?;
+        let transaction: Transaction = self.client.post_signed(API_V3_ORDER, &request)?;
 
         Ok(transaction)
     }
@@ -183,14 +172,13 @@ impl Account {
         };
         let order = self.build_order(sell);
         let request = build_signed_request(order, self.recv_window)?;
-        let data = self.client.post_signed(API_V3_ORDER, &request)?;
-        let transaction: Transaction = from_str(data.as_str())?;
+        let transaction: Transaction = self.client.post_signed(API_V3_ORDER, &request)?;
 
         Ok(transaction)
     }
 
     // Check an order's status
-    pub fn cancel_order<S>(&self, symbol: S, order_id: u64) -> Result<(OrderCanceled)>
+    pub fn cancel_order<S>(&self, symbol: S, order_id: u64) -> Result<OrderCanceled>
     where
         S: Into<String>,
     {
@@ -199,8 +187,7 @@ impl Account {
         parameters.insert("orderId".into(), order_id.to_string());
 
         let request = build_signed_request(parameters, self.recv_window)?;
-        let data = self.client.delete_signed(API_V3_ORDER, &request)?;
-        let order_canceled: OrderCanceled = from_str(data.as_str())?;
+        let order_canceled: OrderCanceled = self.client.delete_signed(API_V3_ORDER, &request)?;
 
         Ok(order_canceled)
     }
@@ -214,8 +201,7 @@ impl Account {
         parameters.insert("symbol".into(), symbol.into());
 
         let request = build_signed_request(parameters, self.recv_window)?;
-        let data = self.client.get_signed("/api/v3/myTrades", &request)?;
-        let trade_history: Vec<TradeHistory> = from_str(data.as_str())?;
+        let trade_history: Vec<TradeHistory> = self.client.get_signed("/api/v3/myTrades", &request)?;
 
         Ok(trade_history)
     }
