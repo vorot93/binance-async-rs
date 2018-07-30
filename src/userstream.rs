@@ -1,7 +1,6 @@
-use model::*;
 use client::*;
 use errors::*;
-use serde_json::from_str;
+use model::*;
 
 static USER_DATA_STREAM: &'static str = "/api/v1/userDataStream";
 
@@ -13,26 +12,21 @@ pub struct UserStream {
 
 impl UserStream {
     // User Stream
-    pub fn start(&self) -> Result<(UserDataStream)> {
-        let data = self.client.post(USER_DATA_STREAM)?;
-        let user_data_stream: UserDataStream = from_str(data.as_str())?;
+    pub fn start(&self) -> Result<UserDataStream> {
+        let user_data_stream: UserDataStream = self.client.post(USER_DATA_STREAM)?;
 
         Ok(user_data_stream)
     }
 
     // Current open orders on a symbol
-    pub fn keep_alive(&self, listen_key: &str) -> Result<(Success)> {
-        let data = self.client.put(USER_DATA_STREAM, listen_key)?;
-
-        let success: Success = from_str(data.as_str())?;
+    pub fn keep_alive(&self, listen_key: &str) -> Result<Success> {
+        let success: Success = self.client.put(USER_DATA_STREAM, listen_key)?;
 
         Ok(success)
     }
 
-    pub fn close(&self, listen_key: &str) -> Result<(Success)> {
-        let data = self.client.put(USER_DATA_STREAM, listen_key)?;
-
-        let success: Success = from_str(data.as_str())?;
+    pub fn close(&self, listen_key: &str) -> Result<Success> {
+        let success: Success = self.client.put(USER_DATA_STREAM, listen_key)?;
 
         Ok(success)
     }

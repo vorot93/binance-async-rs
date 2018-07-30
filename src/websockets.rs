@@ -1,12 +1,12 @@
-use model::*;
 use errors::*;
-use url::Url;
+use model::*;
 use serde_json::from_str;
+use url::Url;
 
-use tungstenite::connect;
-use tungstenite::protocol::WebSocket;
 use tungstenite::client::AutoStream;
+use tungstenite::connect;
 use tungstenite::handshake::client::Response;
+use tungstenite::protocol::WebSocket;
 
 static WEBSOCKET_URL: &'static str = "wss://stream.binance.com:9443/ws/";
 
@@ -15,8 +15,8 @@ static EXECUTION_REPORT: &'static str = "executionReport";
 
 static KLINE: &'static str = "kline";
 static AGGREGATED_TRADE: &'static str = "aggTrade";
-static DEPTH_ORDERBOOK : &'static str = "depthUpdate";
-static PARTIAL_ORDERBOOK : &'static str = "lastUpdateId";
+static DEPTH_ORDERBOOK: &'static str = "depthUpdate";
+static PARTIAL_ORDERBOOK: &'static str = "lastUpdateId";
 
 static DAYTICKER: &'static str = "24hrTicker";
 
@@ -68,9 +68,7 @@ impl WebSockets {
                 self.socket = Some(answer);
                 Ok(())
             }
-            Err(e) => {
-                bail!(format!("Error during handshake {}", e));
-            }
+            Err(e) => Err(BinanceError::HandShakeError(format!("{}", e)))?,
         }
     }
 

@@ -1,8 +1,8 @@
-use model::*;
+use serde_json::Value;
+
 use client::*;
 use errors::*;
-
-use serde_json::from_str;
+use model::{ExchangeInfo, ExchangeInformation, ServerTime};
 
 #[derive(Clone)]
 pub struct General {
@@ -12,26 +12,23 @@ pub struct General {
 impl General {
     // Test connectivity
     pub fn ping(&self) -> Result<(String)> {
-        self.client.get("/api/v1/ping", "")?;
+        let _: Value = self.client.get("/api/v1/ping", None)?;
 
         Ok("pong".into())
     }
 
     // Check server time
-    pub fn get_server_time(&self) -> Result<(ServerTime)> {
-        let data: String = self.client.get("/api/v1/time", "")?;
+    pub fn get_server_time(&self) -> Result<ServerTime> {
+        Ok(self.client.get("/api/v1/time", None)?)
+    }
 
-        let server_time: ServerTime = from_str(data.as_str())?;
-
-        Ok(server_time)
+    pub fn get_exchange_info(&self) -> Result<ExchangeInfo> {
+        Ok(self.client.get("/api/v1/exchangeInfo", None)?)
     }
 
     // Obtain exchange information (rate limits, symbol metadata etc)
-    pub fn exchange_info(&self) -> Result<(ExchangeInformation)> {
-        let data: String = self.client.get("/api/v1/exchangeInfo", "")?;
-
-        let info: ExchangeInformation = from_str(data.as_str())?;
-
+    pub fn exchange_info(&self) -> Result<ExchangeInformation> {
+        let info: ExchangeInformation = self.client.get("/api/v1/exchangeInfo", None)?;
         Ok(info)
     }
 }
