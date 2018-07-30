@@ -1,18 +1,14 @@
-use client::*;
-use errors::*;
-use model::*;
-use serde_json::Value;
 use std::collections::BTreeMap;
-use util::*;
 
-#[derive(Clone)]
-pub struct Market {
-    pub client: Client,
-    pub recv_window: u64,
-}
+use client::{Binance, Market};
+use errors::{BinanceError, Result};
+use model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Tickers};
+use serde_json::Value;
+
+use util::{build_request, to_f64, to_i64};
 
 // Market Data endpoints
-impl Market {
+impl Binance<Market> {
     // Order book (Default 100; max 100)
     pub fn get_depth<S>(&self, symbol: S) -> Result<OrderBook>
     where
@@ -23,23 +19,20 @@ impl Market {
         parameters.insert("symbol".into(), symbol.into());
         let request = build_request(&parameters);
 
-        let order_book: OrderBook = self.client.get("/api/v1/depth", request.as_ref())?;
+        let order_book: OrderBook = self.transport.get("/api/v1/depth", request.as_ref())?;
 
         Ok(order_book)
     }
 
     // Latest price for ALL symbols.
-    pub fn get_all_prices(&self) -> Result<(Prices)> {
-        let prices: Prices = self.client.get("/api/v1/ticker/allPrices", None)?;
+    pub fn get_all_prices(&self) -> Result<Prices> {
+        let prices: Prices = self.transport.get("/api/v1/ticker/allPrices", None)?;
 
         Ok(prices)
     }
 
     // Latest price for ONE symbol.
-    pub fn get_price<S>(&self, symbol: S) -> Result<f64>
-    where
-        S: Into<String>,
-    {
+    pub fn get_price(&self, symbol: impl Into<String>) -> Result<f64> {
         match self.get_all_prices() {
             Ok(answer) => match answer {
                 Prices::AllPrices(prices) => {
@@ -59,7 +52,7 @@ impl Market {
     // Symbols order book ticker
     // -> Best price/qty on the order book for ALL symbols.
     pub fn get_all_book_tickers(&self) -> Result<BookTickers> {
-        let book_tickers: BookTickers = self.client.get("/api/v1/ticker/allBookTickers", None)?;
+        let book_tickers: BookTickers = self.transport.get("/api/v1/ticker/allBookTickers", None)?;
 
         Ok(book_tickers)
     }
@@ -96,7 +89,7 @@ impl Market {
         parameters.insert("symbol".into(), symbol.into());
         let request = build_request(&parameters);
 
-        let stats: PriceStats = self.client.get("/api/v1/ticker/24hr", request.as_ref())?;
+        let stats: PriceStats = self.transport.get("/api/v1/ticker/24hr", request.as_ref())?;
 
         Ok(stats)
     }
@@ -129,7 +122,7 @@ impl Market {
 
         let request = build_request(&parameters);
 
-        let parsed_data: Vec<Vec<Value>> = self.client.get("/api/v1/klines", request.as_ref())?;
+        let parsed_data: Vec<Vec<Value>> = self.transport.get("/api/v1/klines", request.as_ref())?;
 
         let klines = KlineSummaries::AllKlineSummaries(
             parsed_data
@@ -158,7 +151,7 @@ impl Market {
 
         let request = build_request(&parameters);
 
-        let stats: Vec<PriceStats> = self.client.get("/api/v1/ticker/24hr", request.as_ref())?;
+        let stats: Vec<PriceStats> = self.transport.get("/api/v1/ticker/24hr", request.as_ref())?;
 
         Ok(stats)
     }
