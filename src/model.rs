@@ -376,50 +376,50 @@ pub struct DayTickerEvent {
     #[serde(rename = "s")]
     pub symbol: String,
 
-    #[serde(rename = "p")]
-    pub price_change: String,
+    #[serde(rename = "p", with = "string_or_float")]
+    pub price_change: f64,
 
-    #[serde(rename = "P")]
-    pub price_change_percent: String,
+    #[serde(rename = "P", with = "string_or_float")]
+    pub price_change_percent: f64,
 
-    #[serde(rename = "w")]
-    pub average_price: String,
+    #[serde(rename = "w", with = "string_or_float")]
+    pub average_price: f64,
 
-    #[serde(rename = "x")]
-    pub prev_close: String,
+    #[serde(rename = "x", with = "string_or_float")]
+    pub prev_close: f64,
 
-    #[serde(rename = "c")]
-    pub current_close: String,
+    #[serde(rename = "c", with = "string_or_float")]
+    pub current_close: f64,
 
-    #[serde(rename = "Q")]
-    pub current_close_qty: String,
+    #[serde(rename = "Q", with = "string_or_float")]
+    pub current_close_qty: f64,
 
-    #[serde(rename = "b")]
-    pub best_bid: String,
+    #[serde(rename = "b", with = "string_or_float")]
+    pub best_bid: f64,
 
-    #[serde(rename = "B")]
-    pub best_bid_qty: String,
+    #[serde(rename = "B", with = "string_or_float")]
+    pub best_bid_qty: f64,
 
-    #[serde(rename = "a")]
-    pub best_ask: String,
+    #[serde(rename = "a", with = "string_or_float")]
+    pub best_ask: f64,
 
-    #[serde(rename = "A")]
-    pub best_ask_qty: String,
+    #[serde(rename = "A", with = "string_or_float")]
+    pub best_ask_qty: f64,
 
-    #[serde(rename = "o")]
-    pub open: String,
+    #[serde(rename = "o", with = "string_or_float")]
+    pub open: f64,
 
-    #[serde(rename = "h")]
-    pub high: String,
+    #[serde(rename = "h", with = "string_or_float")]
+    pub high: f64,
 
-    #[serde(rename = "l")]
-    pub low: String,
+    #[serde(rename = "l", with = "string_or_float")]
+    pub low: f64,
 
-    #[serde(rename = "v")]
-    pub volume: String,
+    #[serde(rename = "v", with = "string_or_float")]
+    pub volume: f64,
 
-    #[serde(rename = "q")]
-    pub quote_volume: String,
+    #[serde(rename = "q", with = "string_or_float")]
+    pub quote_volume: f64,
 
     #[serde(rename = "O")]
     pub open_time: u64,
