@@ -604,7 +604,7 @@ pub struct RateLimit {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RateLimitType {
     Orders,
-    Requests,
+    RequestWeight,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -631,9 +631,11 @@ pub enum SymbolFilter {
     #[serde(rename_all = "camelCase")]
     MinNotional { min_notional: String },
     #[serde(rename_all = "camelCase")]
-    MaxNumOrders { limit: String },
+    MaxNumAlgoOrders { max_num_algo_orders: u64 },
     #[serde(rename_all = "camelCase")]
-    MaxAlgoOrders { limit: String },
+    MaxNumOrders { limit: u64 },
+    #[serde(rename_all = "camelCase")]
+    IcebergParts { limit: u64 },
 }
 
 // {
@@ -663,8 +665,8 @@ pub enum SymbolFilter {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "filterType", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ExchangeFilter {
-    ExchangeMaxNumOrders { limit: String },
-    ExchangeMaxAlgoOrders { limit: String },
+    ExchangeMaxNumOrders { limit: u64 },
+    ExchangeMaxAlgoOrders { limit: u64 },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
