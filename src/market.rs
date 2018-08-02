@@ -10,13 +10,13 @@ use util::{build_request, to_f64, to_i64};
 // Market Data endpoints
 impl Binance<Market> {
     // Order book (Default 100; max 100)
-    pub fn get_depth<S>(&self, symbol: S) -> Result<OrderBook>
-    where
-        S: Into<String>,
-    {
-        let mut parameters: BTreeMap<String, String> = BTreeMap::new();
+    pub fn get_depth(&self, symbol: impl Into<String>, limit: impl Into<Option<u64>>) -> Result<OrderBook> {
+        let limit = limit.into().unwrap_or(100);
+        let parameters = convert_args!(btreemap!(
+            "symbol" => symbol,
+            "limit" => format!("{}", limit),
+        ));
 
-        parameters.insert("symbol".into(), symbol.into());
         let request = build_request(&parameters);
 
         let order_book: OrderBook = self.transport.get("/api/v1/depth", request.as_ref())?;
@@ -33,20 +33,13 @@ impl Binance<Market> {
 
     // Latest price for ONE symbol.
     pub fn get_price(&self, symbol: impl Into<String>) -> Result<f64> {
-        match self.get_all_prices() {
-            Ok(answer) => match answer {
-                Prices::AllPrices(prices) => {
-                    let cmp_symbol = symbol.into();
-                    for par in prices {
-                        if par.symbol == cmp_symbol {
-                            return Ok(par.price);
-                        }
-                    }
-                    Err(BinanceError::SymbolNotFound)?
-                }
-            },
-            Err(e) => Err(e),
-        }
+        let Prices::AllPrices(prices) = self.get_all_prices()?;
+        let cmp_symbol = symbol.into();
+        Ok(prices
+            .into_iter()
+            .find(|obj| obj.symbol == cmp_symbol)
+            .map(|par| par.price)
+            .ok_or(BinanceError::SymbolNotFound)?)
     }
 
     // Symbols order book ticker
@@ -62,21 +55,9 @@ impl Binance<Market> {
     where
         S: Into<String>,
     {
-        match self.get_all_book_tickers() {
-            Ok(answer) => match answer {
-                BookTickers::AllBookTickers(book_tickers) => {
-                    let cmp_symbol = symbol.into();
-                    for obj in book_tickers {
-                        if obj.symbol == cmp_symbol {
-                            let ticker: Tickers = obj;
-                            return Ok(ticker);
-                        }
-                    }
-                    Err(BinanceError::SymbolNotFound)?
-                }
-            },
-            Err(e) => Err(e),
-        }
+        let BookTickers::AllBookTickers(book_tickers) = self.get_all_book_tickers()?;
+        let cmp_symbol = symbol.into();
+        Ok(book_tickers.into_iter().find(|obj| obj.symbol == cmp_symbol).ok_or(BinanceError::SymbolNotFound)?)
     }
 
     // 24hr ticker price change statistics
