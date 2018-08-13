@@ -1,41 +1,52 @@
-extern crate binance;
+extern crate binance_async as binance;
+extern crate tokio;
+
+use std::env::var;
+
+use tokio::runtime::current_thread::Runtime;
+
+use binance::error::Result;
 use binance::model::{AccountUpdateEvent, DayTickerEvent, DepthOrderBookEvent, KlineEvent, OrderBook, OrderTradeEvent, TradesEvent};
 use binance::websockets::*;
-use binance::{Binance, UserStream};
+use binance::Binance;
 
-fn main() {
-    user_stream();
-    user_stream_websocket();
-    market_websocket();
-    kline_websocket();
-    all_trades_websocket();
+fn main() -> Result<()> {
+    let mut rt = Runtime::new()?;
+
+    user_stream(&mut rt)?;
+    user_stream_websocket(&mut rt)?;
+    market_websocket()?;
+    kline_websocket()?;
+    all_trades_websocket()?;
+    Ok(())
 }
 
-fn user_stream() {
-    let api_key_user = "YOUR_API_KEY";
-    let api_secret_user = "YOUR_API_SECRET";
+fn user_stream(rt: &mut Runtime) -> Result<()> {
+    let api_key_user = var("BINANCE_API_KEY")?;
+    let api_secret_user = var("BINANCE_API_SECRET")?;
 
-    let user_stream = Binance::<UserStream>::new(api_key_user, api_secret_user);
+    let user_stream = Binance::with_credential(&api_key_user, &api_secret_user);
 
-    if let Ok(answer) = user_stream.start() {
+    if let Ok(answer) = rt.block_on(user_stream.start()?) {
         println!("Data Stream Started ...");
         let listen_key = answer.listen_key;
 
-        match user_stream.keep_alive(&listen_key) {
+        match rt.block_on(user_stream.keep_alive(&listen_key)?) {
             Ok(msg) => println!("Keepalive user data stream: {:?}", msg),
             Err(e) => println!("Error: {}", e),
         }
 
-        match user_stream.close(&listen_key) {
+        match rt.block_on(user_stream.close(&listen_key)?) {
             Ok(msg) => println!("Close user data stream: {:?}", msg),
             Err(e) => println!("Error: {}", e),
         }
     } else {
         println!("Not able to start an User Stream (Check your API_KEY)");
     }
+    Ok(())
 }
 
-fn user_stream_websocket() {
+fn user_stream_websocket(rt: &mut Runtime) -> Result<()> {
     struct WebSocketHandler;
 
     impl UserStreamEventHandler for WebSocketHandler {
@@ -53,23 +64,24 @@ fn user_stream_websocket() {
         }
     }
 
-    let api_key_user = "YOUR_KEY";
-    let api_secret_user = "YOUR_SECRET";
-    let user_stream = Binance::<UserStream>::new(api_key_user, api_secret_user);
+    let api_key_user = var("YOUR_KEY")?;
+    let api_secret_user = var("YOUR_SECRET")?;
+    let user_stream = Binance::with_credential(&api_key_user, &api_secret_user);
 
-    if let Ok(answer) = user_stream.start() {
+    if let Ok(answer) = rt.block_on(user_stream.start()?) {
         let listen_key = answer.listen_key;
 
         let mut web_socket: WebSockets = WebSockets::new();
         web_socket.add_user_stream_handler(WebSocketHandler);
         web_socket.connect(&listen_key).unwrap(); // check error
-        web_socket.event_loop();
+        web_socket.event_loop()?;
     } else {
         println!("Not able to start an User Stream (Check your API_KEY)");
     }
+    Ok(())
 }
 
-fn market_websocket() {
+fn market_websocket() -> Result<()> {
     struct WebSocketHandler;
 
     impl MarketEventHandler for WebSocketHandler {
@@ -91,10 +103,10 @@ fn market_websocket() {
 
     web_socket.add_market_handler(WebSocketHandler);
     web_socket.connect(&agg_trade).unwrap(); // check error
-    web_socket.event_loop();
+    web_socket.event_loop()
 }
 
-fn all_trades_websocket() {
+fn all_trades_websocket() -> Result<()> {
     struct WebSocketHandler;
 
     impl DayTickerEventHandler for WebSocketHandler {
@@ -110,10 +122,11 @@ fn all_trades_websocket() {
 
     web_socket.add_day_ticker_handler(WebSocketHandler);
     web_socket.connect(&agg_trade).unwrap(); // check error
-    web_socket.event_loop();
+    web_socket.event_loop()?;
+    Ok(())
 }
 
-fn kline_websocket() {
+fn kline_websocket() -> Result<()> {
     struct WebSocketHandler;
 
     impl KlineEventHandler for WebSocketHandler {
@@ -127,5 +140,5 @@ fn kline_websocket() {
 
     web_socket.add_kline_handler(WebSocketHandler);
     web_socket.connect(&kline).unwrap(); // check error
-    web_socket.event_loop();
+    web_socket.event_loop()
 }

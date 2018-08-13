@@ -1,33 +1,31 @@
+extern crate binance_async as binance;
 extern crate csv;
-extern crate binance;
 
-use std::error::Error;
+use csv::Writer;
 use std::cell::RefCell;
 use std::fs::File;
-use csv::Writer;
 
+use binance::error::Result;
+use binance::model::DayTickerEvent;
 use binance::websockets::*;
-use binance::model::{DayTickerEvent};
 
-fn main() {
-    save_all_trades_websocket();
+fn main() -> Result<()> {
+    save_all_trades_websocket()?;
+    Ok(())
 }
 
-fn save_all_trades_websocket() { 
-
+fn save_all_trades_websocket() -> Result<()> {
     struct WebSocketHandler {
-        wrt: RefCell<Writer<File>>
+        wrt: RefCell<Writer<File>>,
     };
 
     impl WebSocketHandler {
         pub fn new(local_wrt: Writer<File>) -> Self {
-            WebSocketHandler {
-                wrt: RefCell::new(local_wrt)
-            }
+            WebSocketHandler { wrt: RefCell::new(local_wrt) }
         }
 
         // serialize DayTickerEvent as CSV records
-        pub fn write_to_file(&self, event: DayTickerEvent) -> Result<(), Box<Error>> {
+        pub fn write_to_file(&self, event: DayTickerEvent) -> Result<()> {
             let mut local_wrt = self.wrt.borrow_mut();
             local_wrt.serialize(event)?;
             Ok(())
@@ -53,5 +51,6 @@ fn save_all_trades_websocket() {
 
     web_socket.add_day_ticker_handler(web_socket_handler);
     web_socket.connect(&agg_trade).unwrap(); // check error
-    web_socket.event_loop();
+    web_socket.event_loop()?;
+    Ok(())
 }
