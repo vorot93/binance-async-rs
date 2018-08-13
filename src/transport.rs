@@ -5,12 +5,13 @@ use chrono::Utc;
 use failure::Error;
 use futures::{Future, Stream};
 use hex::encode as hexify;
+use hmac::{Hmac, Mac};
 use hyper::client::{HttpConnector, ResponseFuture};
 use hyper::{Body, Client, Method, Request};
 use hyper_tls::HttpsConnector;
-use ring::{digest, hmac};
 use serde::de::DeserializeOwned;
 use serde_json::{from_slice, to_string, to_vec};
+use sha2::Sha256;
 use url::Url;
 
 use error::{BinanceError, BinanceResponse, Result};
@@ -230,13 +231,14 @@ impl Transport {
     pub(self) fn signature(&self, url: &Url, body: &str) -> Result<(&str, String)> {
         let (key, secret) = self.check_key()?;
         // Signature: hex(HMAC_SHA256(queries + data))
-        let signed_key = hmac::SigningKey::new(&digest::SHA256, secret.as_bytes());
+        let mut mac = Hmac::<Sha256>::new_varkey(secret.as_bytes()).unwrap();
         let sign_message = match url.query() {
             Some(query) => format!("{}{}", query, body),
             None => format!("{}", body),
         };
         println!("{}", sign_message);
-        let signature = hexify(hmac::sign(&signed_key, sign_message.as_bytes()));
+        mac.input(sign_message.as_bytes());
+        let signature = hexify(mac.result().code());
         Ok((key, signature))
     }
 
@@ -260,7 +262,7 @@ mod test {
     use url::Url;
 
     #[test]
-    fn test_signature_query() -> Result<()> {
+    fn signature_query() -> Result<()> {
         let tr = Transport::with_credential(
             "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
             "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
@@ -286,7 +288,7 @@ mod test {
     }
 
     #[test]
-    fn test_signature_body() -> Result<()> {
+    fn signature_body() -> Result<()> {
         let tr = Transport::with_credential(
             "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
             "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
@@ -309,7 +311,7 @@ mod test {
     }
 
     #[test]
-    fn test_signature_query_body() -> Result<()> {
+    fn signature_query_body() -> Result<()> {
         let tr = Transport::with_credential(
             "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
             "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
