@@ -1,157 +1,331 @@
-use serde::Deserialize;
-use serde_json::from_reader;
+use std::borrow::Borrow;
+use std::collections::BTreeMap;
 
-use errors::{BinanceResponse, Result};
-use hex::encode as hex_encode;
-use reqwest::header::{ContentType, Headers, UserAgent};
-use reqwest::{Client, Response};
+use chrono::Utc;
+use failure::Error;
+use futures::{Future, Stream};
+use hex::encode as hexify;
+use hyper::client::{HttpConnector, ResponseFuture};
+use hyper::{Body, Client, Method, Request};
+use hyper_tls::HttpsConnector;
 use ring::{digest, hmac};
+use serde::de::DeserializeOwned;
+use serde_json::{from_slice, to_string, to_vec};
+use url::Url;
 
-static API1_HOST: &'static str = "https://www.binance.com";
+use error::{BinanceError, BinanceResponse, Result};
+
+static BASE: &'static str = "https://www.binance.com";
+static RECV_WINDOW: usize = 5000;
+
+pub(crate) type Dummy = &'static [(&'static str, &'static str); 0];
 
 #[derive(Clone)]
-pub struct ApiKeyAuth {
-    api_key: String,
-    secret_key: String,
+pub struct Transport {
+    credential: Option<(String, String)>,
+    client: Client<HttpsConnector<HttpConnector>>,
+    pub recv_window: usize,
 }
 
-#[derive(Clone)]
-pub struct Transport<Auth = ()> {
-    auth: Auth,
-    client: Client,
-}
-
-impl Transport<()> {
+impl Transport {
     pub fn new() -> Self {
-        Transport { auth: (), client: Client::new() }
-    }
-}
+        let https = HttpsConnector::new(4).unwrap();
+        let client = Client::builder().build::<_, Body>(https);
 
-impl Transport<ApiKeyAuth> {
-    pub fn new(api_key: &str, secret_key: &str) -> Self {
         Transport {
-            auth: ApiKeyAuth {
-                api_key: api_key.into(),
-                secret_key: secret_key.into(),
-            },
-            client: Client::new(),
+            credential: None,
+            client: client,
+            recv_window: RECV_WINDOW,
         }
+    }
+
+    pub fn with_credential(api_key: &str, api_secret: &str) -> Self {
+        let https = HttpsConnector::new(4).unwrap();
+        let client = Client::builder().build::<_, Body>(https);
+
+        Transport {
+            client: client,
+            credential: Some((api_key.into(), api_secret.into())),
+            recv_window: RECV_WINDOW,
+        }
+    }
+
+    pub fn get<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K, V)>,
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.request::<_, _, Dummy, _, _, _, _>(Method::GET, endpoint, params, None)
+    }
+
+    pub fn post<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, data: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K, V)>,
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.request::<_, Dummy, _, _, _, _, _>(Method::GET, endpoint, None, data)
+    }
+
+    pub fn put<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, data: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K, V)>,
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.request::<_, Dummy, _, _, _, _, _>(Method::GET, endpoint, None, data)
+    }
+    pub fn signed_get<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K, V)>,
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.signed_request::<_, _, Dummy, _, _, _, _>(Method::GET, endpoint, params, None)
+    }
+
+    pub fn signed_post<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, data: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K, V)>,
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.signed_request::<_, Dummy, _, _, _, _, _>(Method::POST, endpoint, None, data)
+    }
+
+    pub fn signed_put<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K, V)>,
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.signed_request::<_, _, Dummy, _, _, _, _>(Method::PUT, endpoint, params, None)
+    }
+
+    pub fn signed_delete<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K, V)>,
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.signed_request::<_, _, Dummy, _, _, _, _>(Method::DELETE, endpoint, params, None)
+    }
+
+    pub fn request<O: DeserializeOwned, I, J, K1, V1, K2, V2>(
+        &self,
+        method: Method,
+        endpoint: &str,
+        params: Option<I>,
+        data: Option<J>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K1, V1)>,
+        K1: AsRef<str>,
+        V1: AsRef<str>,
+        J: IntoIterator,
+        J::Item: Borrow<(K2, V2)>,
+        K2: AsRef<str>,
+        V2: AsRef<str>,
+    {
+        let url = format!("{}{}", BASE, endpoint);
+        let url = match params {
+            Some(p) => Url::parse_with_params(&url, p)?,
+            None => Url::parse(&url)?,
+        };
+
+        let body = match data {
+            Some(data) => {
+                let bt = data
+                    .into_iter()
+                    .map(|i| {
+                        let (a, b) = i.borrow();
+                        (a.as_ref().to_string(), b.as_ref().to_string())
+                    })
+                    .collect::<BTreeMap<_, _>>();
+                Body::from(to_vec(&bt)?)
+            }
+            None => Body::empty(),
+        };
+
+        let req = Request::builder()
+            .method(method)
+            .uri(url.as_str())
+            .header("user-agent", "binance-rs")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(body)?;
+        Ok(self.handle_response(self.client.request(req)))
+    }
+
+    pub fn signed_request<O: DeserializeOwned, I, J, K1, V1, K2, V2>(
+        &self,
+        method: Method,
+        endpoint: &str,
+        params: Option<I>,
+        data: Option<J>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<(K1, V1)>,
+        K1: AsRef<str>,
+        V1: AsRef<str>,
+        J: IntoIterator,
+        J::Item: Borrow<(K2, V2)>,
+        K2: AsRef<str>,
+        V2: AsRef<str>,
+    {
+        let url = format!("{}{}", BASE, endpoint);
+        let mut url = match params {
+            Some(p) => Url::parse_with_params(&url, p)?,
+            None => Url::parse(&url)?,
+        };
+
+        url.query_pairs_mut().append_pair("timestamp", &Utc::now().timestamp_millis().to_string());
+        url.query_pairs_mut().append_pair("recvWindow", &self.recv_window.to_string());
+
+        let body = match data {
+            Some(data) => {
+                let bt = data
+                    .into_iter()
+                    .map(|i| {
+                        let (a, b) = i.borrow();
+                        (a.as_ref().to_string(), b.as_ref().to_string())
+                    })
+                    .collect::<BTreeMap<_, _>>();
+                to_string(&bt)?
+            }
+            None => "".to_string(),
+        };
+
+        let (key, signature) = self.signature(&url, &body)?;
+
+        url.query_pairs_mut().append_pair("signature", &signature);
+
+        let req = Request::builder()
+            .method(method)
+            .uri(url.as_str())
+            .header("user-agent", "binance-rs")
+            .header("X-MBX-APIKEY", key)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from(body))?;
+
+        Ok(self.handle_response(self.client.request(req)))
+    }
+
+    fn check_key(&self) -> Result<(&str, &str)> {
+        match self.credential.as_ref() {
+            None => Err(BinanceError::NoApiKeySet)?,
+            Some((k, s)) => Ok((k, s)),
+        }
+    }
+
+    pub(self) fn signature(&self, url: &Url, body: &str) -> Result<(&str, String)> {
+        let (key, secret) = self.check_key()?;
+        // Signature: hex(HMAC_SHA256(queries + data))
+        let signed_key = hmac::SigningKey::new(&digest::SHA256, secret.as_bytes());
+        let sign_message = match url.query() {
+            Some(query) => format!("{}{}", query, body),
+            None => format!("{}", body),
+        };
+        println!("{}", sign_message);
+        let signature = hexify(hmac::sign(&signed_key, sign_message.as_bytes()));
+        Ok((key, signature))
+    }
+
+    fn handle_response<O: DeserializeOwned>(&self, fut: ResponseFuture) -> impl Future<Item = O, Error = Error> {
+        fut.from_err::<Error>()
+            .and_then(|resp| resp.into_body().concat2().from_err::<Error>())
+            .map(|chunk| {
+                trace!("{}", String::from_utf8_lossy(&*chunk));
+                chunk
+            })
+            .and_then(|chunk| Ok(from_slice(&chunk)?))
+            .and_then(|resp: BinanceResponse<O>| Ok(resp.to_result()?))
     }
 }
 
-impl<A> Transport<A> {
-    pub fn get<'a, T>(&self, endpoint: &str, request: impl Into<Option<&'a str>>) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let mut url: String = format!("{}{}", API1_HOST, endpoint);
-        for query in request.into() {
-            url.push_str(&format!("?{}", query));
-        }
+#[cfg(test)]
+mod test {
+    use super::Transport;
+    use error::Result;
+    use url::form_urlencoded::Serializer;
+    use url::Url;
 
-        let response = self.client.get(&url).send()?;
-
-        self.handle_response(response)
+    #[test]
+    fn test_signature_query() -> Result<()> {
+        let tr = Transport::with_credential(
+            "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
+            "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
+        );
+        let (_, sig) = tr.signature(
+            &Url::parse_with_params(
+                "http://a.com/api/v1/test",
+                &[
+                    ("symbol", "LTCBTC"),
+                    ("side", "BUY"),
+                    ("type", "LIMIT"),
+                    ("timeInForce", "GTC"),
+                    ("quantity", "1"),
+                    ("price", "0.1"),
+                    ("recvWindow", "5000"),
+                    ("timestamp", "1499827319559"),
+                ],
+            )?,
+            "",
+        )?;
+        assert_eq!(sig, "c8db56825ae71d6d79447849e617115f4a920fa2acdcab2b053c4b2838bd6b71");
+        Ok(())
     }
 
-    pub fn post<T>(&self, endpoint: &str) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let url: String = format!("{}{}", API1_HOST, endpoint);
+    #[test]
+    fn test_signature_body() -> Result<()> {
+        let tr = Transport::with_credential(
+            "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
+            "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
+        );
+        let mut s = Serializer::new(String::new());
+        s.extend_pairs(&[
+            ("symbol", "LTCBTC"),
+            ("side", "BUY"),
+            ("type", "LIMIT"),
+            ("timeInForce", "GTC"),
+            ("quantity", "1"),
+            ("price", "0.1"),
+            ("recvWindow", "5000"),
+            ("timestamp", "1499827319559"),
+        ]);
 
-        let response = self.client.post(&url).headers(self.build_headers()).send()?;
-
-        self.handle_response(response)
+        let (_, sig) = tr.signature(&Url::parse("http://a.com/api/v1/test")?, &s.finish())?;
+        assert_eq!(sig, "c8db56825ae71d6d79447849e617115f4a920fa2acdcab2b053c4b2838bd6b71");
+        Ok(())
     }
 
-    pub fn put<T>(&self, endpoint: &str, listen_key: &str) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let url: String = format!("{}{}", API1_HOST, endpoint);
-        let data: String = format!("listenKey={}", listen_key);
-        let response = self.client.put(&url).headers(self.build_headers()).body(data).send()?;
+    #[test]
+    fn test_signature_query_body() -> Result<()> {
+        let tr = Transport::with_credential(
+            "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
+            "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
+        );
 
-        self.handle_response(response)
-    }
+        let mut s = Serializer::new(String::new());
+        s.extend_pairs(&[("quantity", "1"), ("price", "0.1"), ("recvWindow", "5000"), ("timestamp", "1499827319559")]);
 
-    pub fn delete<T>(&self, endpoint: &str, listen_key: &str) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let url: String = format!("{}{}", API1_HOST, endpoint);
-        let data: String = format!("listenKey={}", listen_key);
-        let response = self.client.delete(url.as_str()).headers(self.build_headers()).body(data).send()?;
-
-        self.handle_response(response)
-    }
-
-    fn build_headers(&self) -> Headers {
-        let mut custon_headers = Headers::new();
-
-        custon_headers.set(UserAgent::new("binance-rs"));
-        // custon_headers.set_raw("X-MBX-APIKEY", self.api_key.as_str());
-        custon_headers
-    }
-
-    fn handle_response<T>(&self, response: Response) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let ret: BinanceResponse<T> = from_reader(response)?; // This line handles network errors
-        Ok(ret.to_result()?) // This line handles binance errors
-    }
-}
-
-impl Transport<ApiKeyAuth> {
-    pub fn get_signed<'a, T>(&self, endpoint: &str, request: &str) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let url = self.sign_request(endpoint, request);
-        let response = self.client.get(&url).headers(self.build_signed_headers()).send()?;
-
-        self.handle_response(response)
-    }
-
-    pub fn post_signed<'a, T>(&self, endpoint: &str, request: &str) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let url = self.sign_request(endpoint, request);
-        let response = self.client.post(&url).headers(self.build_signed_headers()).send()?;
-
-        self.handle_response(response)
-    }
-
-    pub fn delete_signed<'a, T>(&self, endpoint: &str, request: &str) -> Result<T>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let url = self.sign_request(endpoint, request);
-        let response = self.client.delete(&url).headers(self.build_signed_headers()).send()?;
-
-        self.handle_response(response)
-    }
-
-    fn build_signed_headers(&self) -> Headers {
-        let mut custon_headers = Headers::new();
-
-        custon_headers.set(UserAgent::new("binance-rs"));
-        custon_headers.set(ContentType::form_url_encoded());
-        custon_headers.set_raw("X-MBX-APIKEY", self.auth.api_key.as_str());
-        custon_headers
-    }
-
-    // Request must be signed
-    fn sign_request(&self, endpoint: &str, request: &str) -> String {
-        let signed_key = hmac::SigningKey::new(&digest::SHA256, self.auth.secret_key.as_bytes());
-        let signature = hex_encode(hmac::sign(&signed_key, request.as_bytes()).as_ref());
-
-        let request_body: String = format!("{}&signature={}", request, signature);
-        let url: String = format!("{}{}?{}", API1_HOST, endpoint, request_body);
-
-        url
+        let (_, sig) = tr.signature(
+            &Url::parse_with_params(
+                "http://a.com/api/v1/order",
+                &[("symbol", "LTCBTC"), ("side", "BUY"), ("type", "LIMIT"), ("timeInForce", "GTC")],
+            )?,
+            &s.finish(),
+        )?;
+        assert_eq!(sig, "0fd168b8ddb4876a0358a8d14d0c9f3da0e9b20c5d52b2a00fcf7d1c602f9a77");
+        Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use errors::{BinanceError, Result};
+use error::{BinanceError, Result};
 use model::*;
 use serde_json::from_str;
 use url::Url;

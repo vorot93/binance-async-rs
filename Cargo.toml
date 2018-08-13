@@ -1,34 +1,44 @@
 [package]
-name = "binance"
-version = "0.3.1"
+name = "binance-async"
+version = "0.1.0"
 license = "MIT OR Apache-2.0"
-authors = ["Flavio Oliveira <flavio@wisespace.io>"]
+authors = ["Flavio Oliveira <flavio@wisespace.io>", "Weiyüen Wu <doomsplayer@gmail.com>"]
 
-description = "Rust Library for the Binance API"
-keywords = ["cryptocurrency", "trading", "binance"]
-documentation = "https://docs.rs/crate/binance/"
-repository = "https://github.com/wisespace-io/binance-rs"
+description = "Rust Library for the Binance API (Async)"
+keywords = ["cryptocurrency", "trading", "binance", "async"]
+documentation = "https://docs.rs/crate/binance-async"
+repository = "https://github.com/dovahcrow/binance-async-rs"
 readme = "README.md"
 
 [badges]
-travis-ci = { repository = "wisespace-io/binance-rs" }
+travis-ci = { repository = "dovahcrow/binance-async-rs" }
 
 [lib]
-name = "binance"
+name = "binance_async"
 path = "src/lib.rs"
 
 [dependencies]
-hex = "0.3"
+failure = "0.1"
+log = "0.4"
+
+hyper = "0.12"
+hyper-tls = "0.3"
+tungstenite = "0.6"
+
+url = "1"
+futures = "0.1"
+tokio = "0.1"
+
+chrono = { version = "0.4", features = ["serde"] }
+
 serde = "1"
 serde_json = "1"
 serde_derive = "1"
-ring = "0.12"
-reqwest = "0.8"
-tungstenite = "0.6"
-url = "1.7"
-failure = "0.1"
-log = "0.4"
-maplit = "1"
+
+hex = "0.3"
+ring = "0.13"
 
 [dev-dependencies]
 csv = "1"
+dotenv = "0.13"
+env_logger = "0.5"

@@ -36,4 +36,6 @@ pub enum BinanceError {
     SymbolNotFound,
     #[fail(display = "Hand shake error: {}", _0)]
     HandShakeError(String),
+    #[fail(display = "No Api key set for private api")]
+    NoApiKeySet,
 }
