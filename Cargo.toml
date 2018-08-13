@@ -1,6 +1,6 @@
 [package]
 name = "binance-async"
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT OR Apache-2.0"
 authors = ["Flavio Oliveira <flavio@wisespace.io>", "Weiyüen Wu <doomsplayer@gmail.com>"]
 
