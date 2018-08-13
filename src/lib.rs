@@ -2,9 +2,10 @@
 #[macro_use]
 extern crate failure;
 extern crate hex;
+extern crate hmac;
 extern crate hyper;
-extern crate ring;
 extern crate serde;
+extern crate sha2;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
