@@ -5,6 +5,7 @@ mod userstream;
 
 use transport::Transport;
 
+#[derive(Clone)]
 pub struct Binance {
     pub transport: Transport,
 }
