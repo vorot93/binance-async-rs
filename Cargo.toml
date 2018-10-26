@@ -24,6 +24,7 @@ log = "0.4"
 hyper = "0.12"
 hyper-tls = "0.3"
 tungstenite = "0.6"
+tokio-tungstenite = "0.6"
 
 url = "1"
 futures = "0.1"
