@@ -1,6 +1,3 @@
-use std::borrow::Borrow;
-use std::collections::BTreeMap;
-
 use chrono::Utc;
 use failure::Error;
 use futures::{Future, Stream};
@@ -10,16 +7,16 @@ use hyper::client::{HttpConnector, ResponseFuture};
 use hyper::{Body, Client, Method, Request};
 use hyper_tls::HttpsConnector;
 use serde::de::DeserializeOwned;
-use serde_json::{from_slice, to_string, to_vec};
+use serde::Serialize;
+use serde_json::{from_slice, to_string, to_value};
 use sha2::Sha256;
 use url::Url;
 
 use error::{BinanceError, BinanceResponse, Result};
 
 static BASE: &'static str = "https://www.binance.com";
+// static BASE: &'static str = "http://requestbin.fullcontact.com/199a3mf1";
 static RECV_WINDOW: usize = 5000;
-
-pub(crate) type Dummy = &'static [(&'static str, &'static str); 0];
 
 #[derive(Clone)]
 pub struct Transport {
@@ -51,163 +48,124 @@ impl Transport {
         }
     }
 
-    pub fn get<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn get<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
     where
-        I: IntoIterator,
-        I::Item: Borrow<(K, V)>,
-        K: AsRef<str>,
-        V: AsRef<str>,
+        O: DeserializeOwned,
+        Q: Serialize,
     {
-        self.request::<_, _, Dummy, _, _, _, _>(Method::GET, endpoint, params, None)
+        self.request::<_, _, ()>(Method::GET, endpoint, params, None)
     }
 
-    pub fn post<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, data: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn post<O, D>(&self, endpoint: &str, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
     where
-        I: IntoIterator,
-        I::Item: Borrow<(K, V)>,
-        K: AsRef<str>,
-        V: AsRef<str>,
+        O: DeserializeOwned,
+        D: Serialize,
     {
-        self.request::<_, Dummy, _, _, _, _, _>(Method::GET, endpoint, None, data)
+        self.request::<_, (), _>(Method::POST, endpoint, None, data)
     }
 
-    pub fn put<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, data: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn put<O, D>(&self, endpoint: &str, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
     where
-        I: IntoIterator,
-        I::Item: Borrow<(K, V)>,
-        K: AsRef<str>,
-        V: AsRef<str>,
+        O: DeserializeOwned,
+        D: Serialize,
     {
-        self.request::<_, Dummy, _, _, _, _, _>(Method::GET, endpoint, None, data)
-    }
-    pub fn signed_get<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
-    where
-        I: IntoIterator,
-        I::Item: Borrow<(K, V)>,
-        K: AsRef<str>,
-        V: AsRef<str>,
-    {
-        self.signed_request::<_, _, Dummy, _, _, _, _>(Method::GET, endpoint, params, None)
+        self.request::<_, (), _>(Method::PUT, endpoint, None, data)
     }
 
-    pub fn signed_post<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, data: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn delete<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
     where
-        I: IntoIterator,
-        I::Item: Borrow<(K, V)>,
-        K: AsRef<str>,
-        V: AsRef<str>,
+        O: DeserializeOwned,
+        Q: Serialize,
     {
-        self.signed_request::<_, Dummy, _, _, _, _, _>(Method::POST, endpoint, None, data)
+        self.request::<_, _, ()>(Method::DELETE, endpoint, params, None)
     }
 
-    pub fn signed_put<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_get<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
     where
-        I: IntoIterator,
-        I::Item: Borrow<(K, V)>,
-        K: AsRef<str>,
-        V: AsRef<str>,
+        O: DeserializeOwned,
+        Q: Serialize,
     {
-        self.signed_request::<_, _, Dummy, _, _, _, _>(Method::PUT, endpoint, params, None)
+        self.signed_request::<_, _, ()>(Method::GET, endpoint, params, None)
     }
 
-    pub fn signed_delete<O: DeserializeOwned, I, K, V>(&self, endpoint: &str, params: Option<I>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_post<O, D>(&self, endpoint: &str, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
     where
-        I: IntoIterator,
-        I::Item: Borrow<(K, V)>,
-        K: AsRef<str>,
-        V: AsRef<str>,
+        O: DeserializeOwned,
+        D: Serialize,
     {
-        self.signed_request::<_, _, Dummy, _, _, _, _>(Method::DELETE, endpoint, params, None)
+        self.signed_request::<_, (), _>(Method::POST, endpoint, None, data)
     }
 
-    pub fn request<O: DeserializeOwned, I, J, K1, V1, K2, V2>(
-        &self,
-        method: Method,
-        endpoint: &str,
-        params: Option<I>,
-        data: Option<J>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_put<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
     where
-        I: IntoIterator,
-        I::Item: Borrow<(K1, V1)>,
-        K1: AsRef<str>,
-        V1: AsRef<str>,
-        J: IntoIterator,
-        J::Item: Borrow<(K2, V2)>,
-        K2: AsRef<str>,
-        V2: AsRef<str>,
+        O: DeserializeOwned,
+        Q: Serialize,
+    {
+        self.signed_request::<_, _, ()>(Method::PUT, endpoint, params, None)
+    }
+
+    pub fn signed_delete<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        O: DeserializeOwned,
+        Q: Serialize,
+    {
+        self.signed_request::<_, _, ()>(Method::DELETE, endpoint, params, None)
+    }
+
+    pub fn request<O, Q, D>(&self, method: Method, endpoint: &str, params: Option<Q>, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        O: DeserializeOwned,
+        Q: Serialize,
+        D: Serialize,
     {
         let url = format!("{}{}", BASE, endpoint);
         let url = match params {
-            Some(p) => Url::parse_with_params(&url, p)?,
+            Some(p) => Url::parse_with_params(&url, p.to_url_query())?,
             None => Url::parse(&url)?,
         };
 
         let body = match data {
-            Some(data) => {
-                let bt = data
-                    .into_iter()
-                    .map(|i| {
-                        let (a, b) = i.borrow();
-                        (a.as_ref().to_string(), b.as_ref().to_string())
-                    })
-                    .collect::<BTreeMap<_, _>>();
-                Body::from(to_vec(&bt)?)
-            }
-            None => Body::empty(),
-        };
-
-        let req = Request::builder()
-            .method(method)
-            .uri(url.as_str())
-            .header("user-agent", "binance-rs")
-            .header("content-type", "application/x-www-form-urlencoded")
-            .body(body)?;
-        Ok(self.handle_response(self.client.request(req)))
-    }
-
-    pub fn signed_request<O: DeserializeOwned, I, J, K1, V1, K2, V2>(
-        &self,
-        method: Method,
-        endpoint: &str,
-        params: Option<I>,
-        data: Option<J>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
-    where
-        I: IntoIterator,
-        I::Item: Borrow<(K1, V1)>,
-        K1: AsRef<str>,
-        V1: AsRef<str>,
-        J: IntoIterator,
-        J::Item: Borrow<(K2, V2)>,
-        K2: AsRef<str>,
-        V2: AsRef<str>,
-    {
-        let url = format!("{}{}", BASE, endpoint);
-        let mut url = match params {
-            Some(p) => Url::parse_with_params(&url, p)?,
-            None => Url::parse(&url)?,
-        };
-
-        url.query_pairs_mut().append_pair("timestamp", &Utc::now().timestamp_millis().to_string());
-        url.query_pairs_mut().append_pair("recvWindow", &self.recv_window.to_string());
-
-        let body = match data {
-            Some(data) => {
-                let bt = data
-                    .into_iter()
-                    .map(|i| {
-                        let (a, b) = i.borrow();
-                        (a.as_ref().to_string(), b.as_ref().to_string())
-                    })
-                    .collect::<BTreeMap<_, _>>();
-                to_string(&bt)?
-            }
+            Some(data) => data.to_url_query_string(),
             None => "".to_string(),
         };
 
-        let (key, signature) = self.signature(&url, &body)?;
+        let mut req = Request::builder();
+        req.method(method)
+            .uri(url.as_str())
+            .header("user-agent", "binance-rs")
+            .header("content-type", "application/x-www-form-urlencoded");
 
+        if let Ok((key, _)) = self.check_key() {
+            // This is for user stream: user stream requests need api key in the header but no signature. WEIRD
+            req.header("X-MBX-APIKEY", key);
+        }
+
+        let req = req.body(Body::from(body))?;
+
+        // let req = Request::builder()
+        //     .method(method)
+        //     .uri(url.as_str())
+        //     .header("user-agent", "binance-rs")
+        //     .header("content-type", "application/x-www-form-urlencoded")
+        //     .body(Body::from(body))?;
+        Ok(self.handle_response(self.client.request(req)))
+    }
+
+    pub fn signed_request<O, Q, D>(&self, method: Method, endpoint: &str, params: Option<Q>, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
+    where
+        O: DeserializeOwned,
+        Q: Serialize,
+        D: Serialize,
+    {
+        let query = params.map(|q| q.to_url_query()).unwrap_or_else(|| vec![]);
+        let url = format!("{}{}", BASE, endpoint);
+        let mut url = Url::parse_with_params(&url, &query)?;
+        url.query_pairs_mut().append_pair("timestamp", &Utc::now().timestamp_millis().to_string());
+        url.query_pairs_mut().append_pair("recvWindow", &self.recv_window.to_string());
+
+        let body = data.map(|data| data.to_url_query_string()).unwrap_or_else(|| "".to_string());
+
+        let (key, signature) = self.signature(&url, &body)?;
         url.query_pairs_mut().append_pair("signature", &signature);
 
         let req = Request::builder()
@@ -236,7 +194,7 @@ impl Transport {
             Some(query) => format!("{}{}", query, body),
             None => format!("{}", body),
         };
-        println!("{}", sign_message);
+        trace!("Sign message: {}", sign_message);
         mac.input(sign_message.as_bytes());
         let signature = hexify(mac.result().code());
         Ok((key, signature))
@@ -248,11 +206,39 @@ impl Transport {
             .map(|chunk| {
                 trace!("{}", String::from_utf8_lossy(&*chunk));
                 chunk
-            })
-            .and_then(|chunk| Ok(from_slice(&chunk)?))
+            }).and_then(|chunk| Ok(from_slice(&chunk)?))
             .and_then(|resp: BinanceResponse<O>| Ok(resp.to_result()?))
     }
 }
+
+trait ToUrlQuery: Serialize {
+    fn to_url_query_string(&self) -> String {
+        let vec = self.to_url_query();
+
+        let s = vec.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join("&");
+        s
+    }
+
+    fn to_url_query(&self) -> Vec<(String, String)> {
+        let v = to_value(self).unwrap();
+        let v = v.as_object().unwrap();
+        let mut vec = vec![];
+
+        for (key, value) in v.into_iter() {
+            if value.is_null() {
+                continue;
+            } else if value.is_string() {
+                vec.push((key.clone(), value.as_str().unwrap().to_string()))
+            } else {
+                vec.push((key.clone(), to_string(value).unwrap()))
+            }
+        }
+
+        vec
+    }
+}
+
+impl<S: Serialize> ToUrlQuery for S {}
 
 #[cfg(test)]
 mod test {
@@ -328,6 +314,31 @@ mod test {
             &s.finish(),
         )?;
         assert_eq!(sig, "0fd168b8ddb4876a0358a8d14d0c9f3da0e9b20c5d52b2a00fcf7d1c602f9a77");
+        Ok(())
+    }
+
+    #[test]
+    fn signature_body2() -> Result<()> {
+        let tr = Transport::with_credential(
+            "vj1e6h50pFN9CsXT5nsL25JkTuBHkKw3zJhsA6OPtruIRalm20vTuXqF3htCZeWW",
+            "5Cjj09rLKWNVe7fSalqgpilh5I3y6pPplhOukZChkusLqqi9mQyFk34kJJBTdlEJ",
+        );
+
+        let q = &mut [
+            ("symbol", "ETHBTC"),
+            ("side", "BUY"),
+            ("type", "LIMIT"),
+            ("timeInForce", "GTC"),
+            ("quantity", "1"),
+            ("price", "0.1"),
+            ("recvWindow", "5000"),
+            ("timestamp", "1540687064555"),
+        ];
+        q.sort();
+        let q: Vec<_> = q.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect();
+        let q = q.join("&");
+        let (_, sig) = tr.signature(&Url::parse("http://a.com/api/v1/test")?, &q)?;
+        assert_eq!(sig, "1ee5a75760b9496a2144a22116e02bc0b7fdcf828781fa87ca273540dfcf2cb0");
         Ok(())
     }
 }

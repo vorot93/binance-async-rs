@@ -11,10 +11,9 @@ use url::Url;
 
 use crate::client::Binance;
 use crate::error::{BinanceError, Result};
-use crate::model::websocket::{BinanceWebsocketMessage, Subscription};
-use crate::model::{AccountUpdateEvent, OrderTradeEvent};
+use crate::model::websocket::{AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate};
 
-const WS_URL: &'static str = "ws://localhost:9443/ws";
+const WS_URL: &'static str = "wss://stream.binance.com:9443/ws";
 
 impl Binance {
     pub fn websocket(&self) -> BinanceWebsocket {
@@ -86,23 +85,31 @@ impl Stream for BinanceWebsocket {
 }
 
 fn parse_message(sub: Subscription, msg: Message) -> Result<BinanceWebsocketMessage> {
-    let msg = if let Message::Text(msg) = msg { msg } else { unimplemented!() };
+    let msg = match msg {
+        Message::Text(msg) => msg,
+        Message::Binary(b) => return Ok(BinanceWebsocketMessage::Binary(b)),
+        Message::Pong(..) => return Ok(BinanceWebsocketMessage::Pong),
+        Message::Ping(..) => return Ok(BinanceWebsocketMessage::Ping),
+    };
 
+    trace!("Incoming websocket message {}", msg);
     let message = match sub {
-        Subscription::Ticker(_) => BinanceWebsocketMessage::Ticker(from_str(&msg)?),
-        Subscription::Depth(_) => BinanceWebsocketMessage::Depth(from_str(&msg)?),
-        Subscription::AggregateTrade(_) => BinanceWebsocketMessage::AggregateTrade(from_str(&msg)?),
+        Subscription::AggregateTrade(..) => BinanceWebsocketMessage::AggregateTrade(from_str(&msg)?),
         Subscription::Candlestick(..) => BinanceWebsocketMessage::Candlestick(from_str(&msg)?),
+        Subscription::Depth(..) => BinanceWebsocketMessage::Depth(from_str(&msg)?),
+        Subscription::MiniTicker(..) => BinanceWebsocketMessage::MiniTicker(from_str(&msg)?),
+        Subscription::MiniTickerAll => BinanceWebsocketMessage::MiniTickerAll(from_str(&msg)?),
         Subscription::OrderBook(..) => BinanceWebsocketMessage::OrderBook(from_str(&msg)?),
+        Subscription::Ticker(..) => BinanceWebsocketMessage::Ticker(from_str(&msg)?),
         Subscription::TickerAll => BinanceWebsocketMessage::TickerAll(from_str(&msg)?),
-        Subscription::UserData(_) => {
-            let msg: Either<AccountUpdateEvent, OrderTradeEvent> = from_str(&msg)?;
+        Subscription::Trade(..) => BinanceWebsocketMessage::Trade(from_str(&msg)?),
+        Subscription::UserData(..) => {
+            let msg: Either<AccountUpdate, UserOrderUpdate> = from_str(&msg)?;
             match msg {
                 Either::Left(m) => BinanceWebsocketMessage::UserAccountUpdate(m),
                 Either::Right(m) => BinanceWebsocketMessage::UserOrderUpdate(m),
             }
         }
-        _ => unimplemented!(),
     };
     Ok(message)
 }

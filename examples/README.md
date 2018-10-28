@@ -2,12 +2,8 @@
 
 ## Binance Endpoints
 
-cargo run --release --example "binance_endpoints"
+cargo run --release --example "endpoints"
 
 ## Binance Websockets
 
-cargo run --release --example "binance_websockets"
-
-## Binance Websockets - Save all trades to file
-
-cargo run --release --example "binance_save_all_trades"
+cargo run --release --example "ws"

@@ -1,11 +1,14 @@
+use std::collections::HashMap;
+use std::iter::FromIterator;
+
 use failure::Error;
 use futures::Future;
+use serde_json::json;
 use serde_json::Value;
 
 use super::Binance;
 use error::{BinanceError, Result};
-use model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Tickers};
-use transport::Dummy;
+use model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker};
 
 // Market Data endpoints
 impl Binance {
@@ -15,14 +18,14 @@ impl Binance {
         I: Into<Option<u64>>,
     {
         let limit = limit.into().unwrap_or(100);
-        let params = vec![("symbol", symbol.to_string()), ("limit", limit.to_string())];
+        let params = json!{{"symbol": symbol, "limit": limit}};
 
         Ok(self.transport.get("/api/v1/depth", Some(params))?)
     }
 
     // Latest price for ALL symbols.
     pub fn get_all_prices(&self) -> Result<impl Future<Item = Prices, Error = Error>> {
-        Ok(self.transport.get::<_, Dummy, _, _>("/api/v1/ticker/allPrices", None)?)
+        Ok(self.transport.get::<_, ()>("/api/v1/ticker/allPrices", None)?)
     }
 
     // Latest price for ONE symbol.
@@ -40,11 +43,11 @@ impl Binance {
     // Symbols order book ticker
     // -> Best price/qty on the order book for ALL symbols.
     pub fn get_all_book_tickers(&self) -> Result<impl Future<Item = BookTickers, Error = Error>> {
-        Ok(self.transport.get::<_, Dummy, _, _>("/api/v1/ticker/allBookTickers", None)?)
+        Ok(self.transport.get::<_, ()>("/api/v1/ticker/allBookTickers", None)?)
     }
 
     // -> Best price/qty on the order book for ONE symbol
-    pub fn get_book_ticker(&self, symbol: &str) -> Result<impl Future<Item = Tickers, Error = Error>> {
+    pub fn get_book_ticker(&self, symbol: &str) -> Result<impl Future<Item = Ticker, Error = Error>> {
         let symbol = symbol.to_string();
         Ok(self
             .get_all_book_tickers()?
@@ -53,7 +56,8 @@ impl Binance {
 
     // 24hr ticker price change statistics
     pub fn get_24h_price_stats(&self, symbol: &str) -> Result<impl Future<Item = PriceStats, Error = Error>> {
-        Ok(self.transport.get("/api/v1/ticker/24hr", Some(vec![("symbol", symbol.to_string())]))?)
+        let params = json!{{"symbol": symbol}};
+        Ok(self.transport.get("/api/v1/ticker/24hr", Some(params))?)
     }
 
     // Returns up to 'limit' klines for given symbol and interval ("1m", "5m", ...)
@@ -76,6 +80,7 @@ impl Binance {
         if let Some(et) = end_time.into() {
             params.push(("endTime", et.to_string()));
         }
+        let params: HashMap<&str, String> = HashMap::from_iter(params);
 
         let summaries = self.transport.get("/api/v1/klines", Some(params))?.map(|data: Vec<Vec<Value>>| {
             KlineSummaries::AllKlineSummaries(
@@ -92,8 +97,7 @@ impl Binance {
                         number_of_trades: to_i64(&row[8]),
                         taker_buy_base_asset_volume: to_f64(&row[9]),
                         taker_buy_quote_asset_volume: to_f64(&row[10]),
-                    })
-                    .collect(),
+                    }).collect(),
             )
         });
         Ok(summaries)
@@ -101,7 +105,7 @@ impl Binance {
 
     // 24hr ticker price change statistics
     pub fn get_24h_price_stats_all(&self) -> Result<impl Future<Item = Vec<PriceStats>, Error = Error>> {
-        Ok(self.transport.get::<_, Dummy, _, _>("/api/v1/ticker/24hr", None)?)
+        Ok(self.transport.get::<_, ()>("/api/v1/ticker/24hr", None)?)
     }
 }
 
