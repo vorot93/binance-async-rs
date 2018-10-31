@@ -25,7 +25,7 @@ Add this to your Cargo.toml
 
 ```toml
 [dependencies]
-binance-async = 0.1
+binance-async = 0.2
 ```
 
 Examples located in the examples folder.
