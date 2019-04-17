@@ -1,19 +1,20 @@
 extern crate binance_async as binance;
 extern crate dotenv;
 extern crate env_logger;
+extern crate failure;
 extern crate futures;
 extern crate tokio;
 
 use std::env::var;
 
+use failure::Fallible;
 use futures::{Future, Stream};
 use tokio::runtime::current_thread::Runtime;
 
-use binance::error::Result;
 use binance::model::websocket::Subscription;
 use binance::Binance;
 
-fn main() -> Result<()> {
+fn main() -> Fallible<()> {
     ::dotenv::dotenv().ok();
     ::env_logger::init();
     let mut rt = Runtime::new()?;

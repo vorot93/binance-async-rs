@@ -1,14 +1,16 @@
 extern crate binance_async as binance;
 extern crate dotenv;
 extern crate env_logger;
+extern crate failure;
 extern crate tokio;
 
-use binance::error::Result;
-use binance::Binance;
+use failure::Fallible;
 use tokio::runtime::Runtime;
 
+use binance::Binance;
+
 #[test]
-fn ping() -> Result<()> {
+fn ping() -> Fallible<()> {
     ::dotenv::dotenv().ok();
     ::env_logger::init();
 

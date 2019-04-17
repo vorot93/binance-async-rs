@@ -1,16 +1,17 @@
 extern crate binance_async as binance;
 extern crate dotenv;
 extern crate env_logger;
+extern crate failure;
 extern crate tokio;
 
 use std::env::var;
 
+use failure::Fallible;
 use tokio::runtime::current_thread::Runtime;
 
-use binance::error::Result;
 use binance::Binance;
 
-fn main() -> Result<()> {
+fn main() -> Fallible<()> {
     ::dotenv::dotenv().ok();
     ::env_logger::init();
     let api_key = var("BINANCE_KEY")?;

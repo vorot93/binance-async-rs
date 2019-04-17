@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use failure::Error;
+use failure::{Error, Fallible};
 use futures::stream::{SplitStream, Stream};
 use futures::{Future, Poll};
 use serde_json::from_str;
@@ -10,7 +10,7 @@ use tungstenite::Message;
 use url::Url;
 
 use crate::client::Binance;
-use crate::error::{BinanceError, Result};
+use crate::error::BinanceError;
 use crate::model::websocket::{
     AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate,
 };
@@ -101,7 +101,7 @@ impl Stream for BinanceWebsocket {
     }
 }
 
-fn parse_message(sub: Subscription, msg: Message) -> Result<BinanceWebsocketMessage> {
+fn parse_message(sub: Subscription, msg: Message) -> Fallible<BinanceWebsocketMessage> {
     let msg = match msg {
         Message::Text(msg) => msg,
         Message::Binary(b) => return Ok(BinanceWebsocketMessage::Binary(b)),

@@ -1,11 +1,11 @@
-use failure::Error;
+use failure::{Error, Fallible};
 use futures::Future;
 use serde_json::json;
 use std::collections::HashMap;
 use sugar::{convert_args, hashmap};
 
 use client::Binance;
-use error::{BinanceError, Result};
+use error::BinanceError;
 use model::{AccountInformation, Balance, Order, OrderCanceled, TradeHistory, Transaction};
 
 static ORDER_TYPE_LIMIT: &'static str = "LIMIT";
@@ -27,7 +27,7 @@ struct OrderRequest {
 
 impl Binance {
     // Account Information
-    pub fn get_account(&self) -> Result<impl Future<Item = AccountInformation, Error = Error>> {
+    pub fn get_account(&self) -> Fallible<impl Future<Item = AccountInformation, Error = Error>> {
         let account_info = self
             .transport
             .signed_get::<_, ()>("/api/v3/account", None)?;
@@ -35,9 +35,9 @@ impl Binance {
     }
 
     // Balance for ONE Asset
-    pub fn get_balance(&self, asset: &str) -> Result<impl Future<Item = Balance, Error = Error>> {
+    pub fn get_balance(&self, asset: &str) -> Fallible<impl Future<Item = Balance, Error = Error>> {
         let asset = asset.to_string();
-        let search = move |account: AccountInformation| -> Result<Balance> {
+        let search = move |account: AccountInformation| -> Fallible<Balance> {
             let balance = account
                 .balances
                 .into_iter()
@@ -53,7 +53,7 @@ impl Binance {
     pub fn get_open_orders(
         &self,
         symbol: &str,
-    ) -> Result<impl Future<Item = Vec<Order>, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Vec<Order>, Error = Error>> {
         let params = json! {{"symbol": symbol}};
         let orders = self
             .transport
@@ -62,7 +62,7 @@ impl Binance {
     }
 
     // All current open orders
-    pub fn get_all_open_orders(&self) -> Result<impl Future<Item = Vec<Order>, Error = Error>> {
+    pub fn get_all_open_orders(&self) -> Fallible<impl Future<Item = Vec<Order>, Error = Error>> {
         let orders = self
             .transport
             .signed_get::<_, ()>("/api/v3/openOrders", None)?;
@@ -74,7 +74,7 @@ impl Binance {
         &self,
         symbol: &str,
         order_id: u64,
-    ) -> Result<impl Future<Item = Order, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Order, Error = Error>> {
         let params = json! {{"symbol": symbol, "orderId": order_id}};
 
         let order = self.transport.signed_get(API_V3_ORDER, Some(params))?;
@@ -87,7 +87,7 @@ impl Binance {
         symbol: &str,
         qty: f64,
         price: f64,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty.into(),
@@ -109,7 +109,7 @@ impl Binance {
         symbol: &str,
         qty: f64,
         price: f64,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty.into(),
@@ -129,7 +129,7 @@ impl Binance {
         &self,
         symbol: &str,
         qty: f64,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty.into(),
@@ -149,7 +149,7 @@ impl Binance {
         &self,
         symbol: &str,
         qty: f64,
-    ) -> Result<impl Future<Item = Transaction, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty: qty.into(),
@@ -168,7 +168,7 @@ impl Binance {
         &self,
         symbol: &str,
         order_id: u64,
-    ) -> Result<impl Future<Item = OrderCanceled, Error = Error>> {
+    ) -> Fallible<impl Future<Item = OrderCanceled, Error = Error>> {
         let params = json! {{"symbol":symbol, "orderId":order_id}};
         let order_canceled = self.transport.signed_delete(API_V3_ORDER, Some(params))?;
         Ok(order_canceled)
@@ -178,7 +178,7 @@ impl Binance {
     pub fn trade_history(
         &self,
         symbol: &str,
-    ) -> Result<impl Future<Item = Vec<TradeHistory>, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Vec<TradeHistory>, Error = Error>> {
         let params = json! {{"symbol":symbol}};
         let trade_history = self
             .transport

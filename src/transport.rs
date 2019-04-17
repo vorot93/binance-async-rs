@@ -1,5 +1,5 @@
 use chrono::Utc;
-use failure::Error;
+use failure::{Error, Fallible};
 use futures::{Future, Stream};
 use hex::encode as hexify;
 use hmac::{Hmac, Mac};
@@ -12,7 +12,7 @@ use serde_json::{from_slice, to_string, to_value};
 use sha2::Sha256;
 use url::Url;
 
-use error::{BinanceError, BinanceResponse, Result};
+use error::{BinanceError, BinanceResponse};
 
 static BASE: &'static str = "https://www.binance.com";
 // static BASE: &'static str = "http://requestbin.fullcontact.com/199a3mf1";
@@ -52,7 +52,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -64,7 +64,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -76,7 +76,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -88,7 +88,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -100,7 +100,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -112,7 +112,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -124,7 +124,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -136,7 +136,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -150,7 +150,7 @@ impl Transport {
         endpoint: &str,
         params: Option<Q>,
         data: Option<D>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -195,7 +195,7 @@ impl Transport {
         endpoint: &str,
         params: Option<Q>,
         data: Option<D>,
-    ) -> Result<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -227,14 +227,14 @@ impl Transport {
         Ok(self.handle_response(self.client.request(req)))
     }
 
-    fn check_key(&self) -> Result<(&str, &str)> {
+    fn check_key(&self) -> Fallible<(&str, &str)> {
         match self.credential.as_ref() {
             None => Err(BinanceError::NoApiKeySet)?,
             Some((k, s)) => Ok((k, s)),
         }
     }
 
-    pub(self) fn signature(&self, url: &Url, body: &str) -> Result<(&str, String)> {
+    pub(self) fn signature(&self, url: &Url, body: &str) -> Fallible<(&str, String)> {
         let (key, secret) = self.check_key()?;
         // Signature: hex(HMAC_SHA256(queries + data))
         let mut mac = Hmac::<Sha256>::new_varkey(secret.as_bytes()).unwrap();
@@ -299,12 +299,12 @@ impl<S: Serialize> ToUrlQuery for S {}
 #[cfg(test)]
 mod test {
     use super::Transport;
-    use error::Result;
+    use failure::Fallible;
     use url::form_urlencoded::Serializer;
     use url::Url;
 
     #[test]
-    fn signature_query() -> Result<()> {
+    fn signature_query() -> Fallible<()> {
         let tr = Transport::with_credential(
             "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
             "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
@@ -333,7 +333,7 @@ mod test {
     }
 
     #[test]
-    fn signature_body() -> Result<()> {
+    fn signature_body() -> Fallible<()> {
         let tr = Transport::with_credential(
             "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
             "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
@@ -359,7 +359,7 @@ mod test {
     }
 
     #[test]
-    fn signature_query_body() -> Result<()> {
+    fn signature_query_body() -> Fallible<()> {
         let tr = Transport::with_credential(
             "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
             "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j",
@@ -393,7 +393,7 @@ mod test {
     }
 
     #[test]
-    fn signature_body2() -> Result<()> {
+    fn signature_body2() -> Fallible<()> {
         let tr = Transport::with_credential(
             "vj1e6h50pFN9CsXT5nsL25JkTuBHkKw3zJhsA6OPtruIRalm20vTuXqF3htCZeWW",
             "5Cjj09rLKWNVe7fSalqgpilh5I3y6pPplhOukZChkusLqqi9mQyFk34kJJBTdlEJ",

@@ -1,9 +1,4 @@
-use std::result::Result as StdResult;
-
-use failure::Error;
 use serde::Deserialize;
-
-pub type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Fail)]
 #[fail(display = "Binance returns error: {}", msg)]
@@ -20,10 +15,10 @@ pub enum BinanceResponse<T> {
 }
 
 impl<T: for<'a> Deserialize<'a>> BinanceResponse<T> {
-    pub fn to_result(self) -> StdResult<T, BinanceResponseError> {
+    pub fn to_result(self) -> Result<T, BinanceResponseError> {
         match self {
-            BinanceResponse::Success(t) => StdResult::Ok(t),
-            BinanceResponse::Error(e) => StdResult::Err(e),
+            BinanceResponse::Success(t) => Result::Ok(t),
+            BinanceResponse::Error(e) => Result::Err(e),
         }
     }
 }
