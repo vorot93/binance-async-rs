@@ -1,5 +1,8 @@
 pub mod websocket;
 
+use chrono::prelude::*;
+use std::collections::HashMap;
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerTime {
@@ -479,6 +482,48 @@ pub enum OrderStatus {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderRejectReason {
     None,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DepositAddressData {
+    pub address: String,
+    pub address_tag: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DepositHistoryEntry {
+    #[serde(with = "chrono::serde::ts_milliseconds")]
+    pub insert_time: DateTime<Utc>,
+    pub amount: f64,
+    pub asset: String,
+    pub address: String,
+    pub address_tag: Option<String>,
+    pub tx_id: String,
+    pub status: u8,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DepositHistory {
+    pub deposit_list: Vec<DepositHistoryEntry>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetDetailEntry {
+    pub min_withdraw_amount: f64,
+    pub deposit_status: bool,
+    pub withdraw_fee: f64,
+    pub withdraw_status: bool,
+    pub deposit_tip: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetDetail {
+    pub asset_detail: HashMap<String, AssetDetailEntry>,
 }
 
 mod string_or_float {

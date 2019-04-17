@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use failure::{Error, Fallible};
 use futures::Future;
 use serde_json::json;
@@ -6,7 +7,10 @@ use sugar::{convert_args, hashmap};
 
 use client::Binance;
 use error::BinanceError;
-use model::{AccountInformation, Balance, Order, OrderCanceled, TradeHistory, Transaction};
+use model::{
+    AccountInformation, AssetDetail, Balance, DepositAddressData, DepositHistory, Order,
+    OrderCanceled, TradeHistory, Transaction,
+};
 
 static ORDER_TYPE_LIMIT: &'static str = "LIMIT";
 static ORDER_TYPE_MARKET: &'static str = "MARKET";
@@ -185,6 +189,40 @@ impl Binance {
             .signed_get("/api/v3/myTrades", Some(params))?;
 
         Ok(trade_history)
+    }
+
+    pub fn get_deposit_address(
+        &self,
+        symbol: &str,
+    ) -> Fallible<impl Future<Item = DepositAddressData, Error = Error>> {
+        let params = json! {{"asset":symbol}};
+        let deposit_address = self
+            .transport
+            .signed_get("/wapi/v3/depositAddress.html", Some(params))?;
+
+        Ok(deposit_address)
+    }
+
+    pub fn get_deposit_history(
+        &self,
+        symbol: Option<&str>,
+        start_time: Option<DateTime<Utc>>,
+        end_time: Option<DateTime<Utc>>,
+    ) -> Fallible<impl Future<Item = DepositHistory, Error = Error>> {
+        let params = json! {{"asset":symbol, "startTime":start_time.map(|t| t.timestamp_millis()), "endTime":end_time.map(|t| t.timestamp_millis())}};
+        let deposit_history = self
+            .transport
+            .signed_get("/wapi/v3/depositHistory.html", Some(params))?;
+
+        Ok(deposit_history)
+    }
+
+    pub fn asset_detail(&self) -> Fallible<impl Future<Item = AssetDetail, Error = Error>> {
+        let asset_detail = self
+            .transport
+            .signed_get::<_, ()>("/wapi/v3/assetDetail.html", None)?;
+
+        Ok(asset_detail)
     }
 
     fn build_order(&self, order: OrderRequest) -> HashMap<&'static str, String> {
