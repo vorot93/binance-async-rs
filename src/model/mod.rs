@@ -356,9 +356,17 @@ pub enum Interval {
 #[serde(tag = "filterType", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SymbolFilter {
     #[serde(rename_all = "camelCase")]
-    LotSize { min_qty: String, max_qty: String, step_size: String },
+    LotSize {
+        min_qty: String,
+        max_qty: String,
+        step_size: String,
+    },
     #[serde(rename_all = "camelCase")]
-    PriceFilter { min_price: String, max_price: String, tick_size: String },
+    PriceFilter {
+        min_price: String,
+        max_price: String,
+        tick_size: String,
+    },
     #[serde(rename_all = "camelCase")]
     MinNotional { min_notional: String },
     #[serde(rename_all = "camelCase")]
