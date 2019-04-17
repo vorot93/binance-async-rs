@@ -15,13 +15,25 @@ impl Binance {
     }
 
     // Current open orders on a symbol
-    pub fn user_stream_keep_alive(&self, listen_key: &str) -> Result<impl Future<Item = Success, Error = Error>> {
-        let success = self.transport.put(USER_DATA_STREAM, Some(vec![("listen_key", listen_key.to_string())]))?;
+    pub fn user_stream_keep_alive(
+        &self,
+        listen_key: &str,
+    ) -> Result<impl Future<Item = Success, Error = Error>> {
+        let success = self.transport.put(
+            USER_DATA_STREAM,
+            Some(vec![("listen_key", listen_key.to_string())]),
+        )?;
         Ok(success)
     }
 
-    pub fn user_stream_close(&self, listen_key: &str) -> Result<impl Future<Item = Success, Error = Error>> {
-        let success = self.transport.delete(USER_DATA_STREAM, Some(vec![("listen_key", listen_key.to_string())]))?;
+    pub fn user_stream_close(
+        &self,
+        listen_key: &str,
+    ) -> Result<impl Future<Item = Success, Error = Error>> {
+        let success = self.transport.delete(
+            USER_DATA_STREAM,
+            Some(vec![("listen_key", listen_key.to_string())]),
+        )?;
         Ok(success)
     }
 }

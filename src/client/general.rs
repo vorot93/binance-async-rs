@@ -9,7 +9,10 @@ use model::{ExchangeInfo, ExchangeInformation, ServerTime};
 impl Binance {
     // Test connectivity
     pub fn ping(&self) -> Result<impl Future<Item = String, Error = Error>> {
-        Ok(self.transport.get::<_, ()>("/api/v1/ping", None)?.map(|_: Value| "pong".into()))
+        Ok(self
+            .transport
+            .get::<_, ()>("/api/v1/ping", None)?
+            .map(|_: Value| "pong".into()))
     }
 
     // Check server time

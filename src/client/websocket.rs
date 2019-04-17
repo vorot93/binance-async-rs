@@ -11,13 +11,17 @@ use url::Url;
 
 use crate::client::Binance;
 use crate::error::{BinanceError, Result};
-use crate::model::websocket::{AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate};
+use crate::model::websocket::{
+    AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate,
+};
 
 const WS_URL: &'static str = "wss://stream.binance.com:9443/ws";
 
 impl Binance {
     pub fn websocket(&self) -> BinanceWebsocket {
-        BinanceWebsocket { subscriptions: HashMap::new() }
+        BinanceWebsocket {
+            subscriptions: HashMap::new(),
+        }
     }
 }
 
@@ -29,10 +33,15 @@ pub struct BinanceWebsocket {
 }
 
 impl BinanceWebsocket {
-    pub fn subscribe(mut self, subscription: Subscription) -> impl Future<Item = Self, Error = Error> {
+    pub fn subscribe(
+        mut self,
+        subscription: Subscription,
+    ) -> impl Future<Item = Self, Error = Error> {
         let sub = match subscription {
             Subscription::AggregateTrade(ref symbol) => format!("{}@aggTrade", symbol),
-            Subscription::Candlestick(ref symbol, ref interval) => format!("{}@kline_{}", symbol, interval),
+            Subscription::Candlestick(ref symbol, ref interval) => {
+                format!("{}@kline_{}", symbol, interval)
+            }
             Subscription::Depth(ref symbol) => format!("{}@depth", symbol),
             Subscription::MiniTicker(ref symbol) => format!("{}@miniTicker", symbol),
             Subscription::MiniTickerAll => "!miniTicker@arr".to_string(),
@@ -52,7 +61,8 @@ impl BinanceWebsocket {
             .map(|stream| {
                 self.subscriptions.insert(subscription, stream);
                 self
-            }).from_err()
+            })
+            .from_err()
     }
 
     pub fn unsubscribe(&mut self, subscription: &Subscription) -> Option<SplitStream<WSStream>> {
@@ -68,15 +78,22 @@ impl Stream for BinanceWebsocket {
         let streams: Vec<_> = self
             .subscriptions
             .iter_mut()
-            .map(|(sub, stream)| stream.from_err().and_then(move |msg| parse_message(sub.clone(), msg)))
+            .map(|(sub, stream)| {
+                stream
+                    .from_err()
+                    .and_then(move |msg| parse_message(sub.clone(), msg))
+            })
             .collect();
 
-        let streams = streams
-            .into_iter()
-            .fold(None, |acc: Option<Box<Stream<Item = BinanceWebsocketMessage, Error = Error>>>, elem| match acc {
-                Some(stream) => Some(Box::new(stream.select(elem.from_err()))),
-                None => Some(Box::new(elem.from_err())),
-            });
+        let streams = streams.into_iter().fold(
+            None,
+            |acc: Option<Box<Stream<Item = BinanceWebsocketMessage, Error = Error>>>, elem| {
+                match acc {
+                    Some(stream) => Some(Box::new(stream.select(elem.from_err()))),
+                    None => Some(Box::new(elem.from_err())),
+                }
+            },
+        );
         match streams {
             Some(mut streams) => streams.poll(),
             None => Err(BinanceError::NoStreamSubscribed)?,
@@ -94,7 +111,9 @@ fn parse_message(sub: Subscription, msg: Message) -> Result<BinanceWebsocketMess
 
     trace!("Incoming websocket message {}", msg);
     let message = match sub {
-        Subscription::AggregateTrade(..) => BinanceWebsocketMessage::AggregateTrade(from_str(&msg)?),
+        Subscription::AggregateTrade(..) => {
+            BinanceWebsocketMessage::AggregateTrade(from_str(&msg)?)
+        }
         Subscription::Candlestick(..) => BinanceWebsocketMessage::Candlestick(from_str(&msg)?),
         Subscription::Depth(..) => BinanceWebsocketMessage::Depth(from_str(&msg)?),
         Subscription::MiniTicker(..) => BinanceWebsocketMessage::MiniTicker(from_str(&msg)?),

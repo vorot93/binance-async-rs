@@ -31,7 +31,12 @@ fn main() -> Result<()> {
                 .websocket()
                 .subscribe(Subscription::Ticker("ethbtc".to_string()))
                 .and_then(|ws| ws.subscribe(Subscription::AggregateTrade("eosbtc".to_string())))
-                .and_then(|ws| ws.subscribe(Subscription::Candlestick("ethbtc".to_string(), "1m".to_string())))
+                .and_then(|ws| {
+                    ws.subscribe(Subscription::Candlestick(
+                        "ethbtc".to_string(),
+                        "1m".to_string(),
+                    ))
+                })
                 .and_then(|ws| ws.subscribe(Subscription::Depth("xrpbtc".to_string())))
                 .and_then(|ws| ws.subscribe(Subscription::MiniTicker("zrxbtc".to_string())))
                 .and_then(|ws| ws.subscribe(Subscription::OrderBook("trxbtc".to_string(), 5)))

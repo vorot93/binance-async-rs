@@ -13,7 +13,9 @@ pub struct Binance {
 
 impl Binance {
     pub fn new() -> Self {
-        Binance { transport: Transport::new() }
+        Binance {
+            transport: Transport::new(),
+        }
     }
 
     pub fn with_credential(api_key: &str, api_secret: &str) -> Self {

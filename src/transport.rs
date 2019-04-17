@@ -48,7 +48,11 @@ impl Transport {
         }
     }
 
-    pub fn get<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn get<O, Q>(
+        &self,
+        endpoint: &str,
+        params: Option<Q>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -56,7 +60,11 @@ impl Transport {
         self.request::<_, _, ()>(Method::GET, endpoint, params, None)
     }
 
-    pub fn post<O, D>(&self, endpoint: &str, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn post<O, D>(
+        &self,
+        endpoint: &str,
+        data: Option<D>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -64,7 +72,11 @@ impl Transport {
         self.request::<_, (), _>(Method::POST, endpoint, None, data)
     }
 
-    pub fn put<O, D>(&self, endpoint: &str, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn put<O, D>(
+        &self,
+        endpoint: &str,
+        data: Option<D>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -72,7 +84,11 @@ impl Transport {
         self.request::<_, (), _>(Method::PUT, endpoint, None, data)
     }
 
-    pub fn delete<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn delete<O, Q>(
+        &self,
+        endpoint: &str,
+        params: Option<Q>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -80,7 +96,11 @@ impl Transport {
         self.request::<_, _, ()>(Method::DELETE, endpoint, params, None)
     }
 
-    pub fn signed_get<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_get<O, Q>(
+        &self,
+        endpoint: &str,
+        params: Option<Q>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -88,7 +108,11 @@ impl Transport {
         self.signed_request::<_, _, ()>(Method::GET, endpoint, params, None)
     }
 
-    pub fn signed_post<O, D>(&self, endpoint: &str, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_post<O, D>(
+        &self,
+        endpoint: &str,
+        data: Option<D>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -96,7 +120,11 @@ impl Transport {
         self.signed_request::<_, (), _>(Method::POST, endpoint, None, data)
     }
 
-    pub fn signed_put<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_put<O, Q>(
+        &self,
+        endpoint: &str,
+        params: Option<Q>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -104,7 +132,11 @@ impl Transport {
         self.signed_request::<_, _, ()>(Method::PUT, endpoint, params, None)
     }
 
-    pub fn signed_delete<O, Q>(&self, endpoint: &str, params: Option<Q>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_delete<O, Q>(
+        &self,
+        endpoint: &str,
+        params: Option<Q>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -112,7 +144,13 @@ impl Transport {
         self.signed_request::<_, _, ()>(Method::DELETE, endpoint, params, None)
     }
 
-    pub fn request<O, Q, D>(&self, method: Method, endpoint: &str, params: Option<Q>, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn request<O, Q, D>(
+        &self,
+        method: Method,
+        endpoint: &str,
+        params: Option<Q>,
+        data: Option<D>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -151,7 +189,13 @@ impl Transport {
         Ok(self.handle_response(self.client.request(req)))
     }
 
-    pub fn signed_request<O, Q, D>(&self, method: Method, endpoint: &str, params: Option<Q>, data: Option<D>) -> Result<impl Future<Item = O, Error = Error>>
+    pub fn signed_request<O, Q, D>(
+        &self,
+        method: Method,
+        endpoint: &str,
+        params: Option<Q>,
+        data: Option<D>,
+    ) -> Result<impl Future<Item = O, Error = Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -160,10 +204,14 @@ impl Transport {
         let query = params.map(|q| q.to_url_query()).unwrap_or_else(|| vec![]);
         let url = format!("{}{}", BASE, endpoint);
         let mut url = Url::parse_with_params(&url, &query)?;
-        url.query_pairs_mut().append_pair("timestamp", &Utc::now().timestamp_millis().to_string());
-        url.query_pairs_mut().append_pair("recvWindow", &self.recv_window.to_string());
+        url.query_pairs_mut()
+            .append_pair("timestamp", &Utc::now().timestamp_millis().to_string());
+        url.query_pairs_mut()
+            .append_pair("recvWindow", &self.recv_window.to_string());
 
-        let body = data.map(|data| data.to_url_query_string()).unwrap_or_else(|| "".to_string());
+        let body = data
+            .map(|data| data.to_url_query_string())
+            .unwrap_or_else(|| "".to_string());
 
         let (key, signature) = self.signature(&url, &body)?;
         url.query_pairs_mut().append_pair("signature", &signature);
@@ -200,13 +248,17 @@ impl Transport {
         Ok((key, signature))
     }
 
-    fn handle_response<O: DeserializeOwned>(&self, fut: ResponseFuture) -> impl Future<Item = O, Error = Error> {
+    fn handle_response<O: DeserializeOwned>(
+        &self,
+        fut: ResponseFuture,
+    ) -> impl Future<Item = O, Error = Error> {
         fut.from_err::<Error>()
             .and_then(|resp| resp.into_body().concat2().from_err::<Error>())
             .map(|chunk| {
                 trace!("{}", String::from_utf8_lossy(&*chunk));
                 chunk
-            }).and_then(|chunk| Ok(from_slice(&chunk)?))
+            })
+            .and_then(|chunk| Ok(from_slice(&chunk)?))
             .and_then(|resp: BinanceResponse<O>| Ok(resp.to_result()?))
     }
 }
@@ -215,7 +267,11 @@ trait ToUrlQuery: Serialize {
     fn to_url_query_string(&self) -> String {
         let vec = self.to_url_query();
 
-        let s = vec.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect::<Vec<_>>().join("&");
+        let s = vec
+            .into_iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect::<Vec<_>>()
+            .join("&");
         s
     }
 
@@ -269,7 +325,10 @@ mod test {
             )?,
             "",
         )?;
-        assert_eq!(sig, "c8db56825ae71d6d79447849e617115f4a920fa2acdcab2b053c4b2838bd6b71");
+        assert_eq!(
+            sig,
+            "c8db56825ae71d6d79447849e617115f4a920fa2acdcab2b053c4b2838bd6b71"
+        );
         Ok(())
     }
 
@@ -292,7 +351,10 @@ mod test {
         ]);
 
         let (_, sig) = tr.signature(&Url::parse("http://a.com/api/v1/test")?, &s.finish())?;
-        assert_eq!(sig, "c8db56825ae71d6d79447849e617115f4a920fa2acdcab2b053c4b2838bd6b71");
+        assert_eq!(
+            sig,
+            "c8db56825ae71d6d79447849e617115f4a920fa2acdcab2b053c4b2838bd6b71"
+        );
         Ok(())
     }
 
@@ -304,16 +366,29 @@ mod test {
         );
 
         let mut s = Serializer::new(String::new());
-        s.extend_pairs(&[("quantity", "1"), ("price", "0.1"), ("recvWindow", "5000"), ("timestamp", "1499827319559")]);
+        s.extend_pairs(&[
+            ("quantity", "1"),
+            ("price", "0.1"),
+            ("recvWindow", "5000"),
+            ("timestamp", "1499827319559"),
+        ]);
 
         let (_, sig) = tr.signature(
             &Url::parse_with_params(
                 "http://a.com/api/v1/order",
-                &[("symbol", "LTCBTC"), ("side", "BUY"), ("type", "LIMIT"), ("timeInForce", "GTC")],
+                &[
+                    ("symbol", "LTCBTC"),
+                    ("side", "BUY"),
+                    ("type", "LIMIT"),
+                    ("timeInForce", "GTC"),
+                ],
             )?,
             &s.finish(),
         )?;
-        assert_eq!(sig, "0fd168b8ddb4876a0358a8d14d0c9f3da0e9b20c5d52b2a00fcf7d1c602f9a77");
+        assert_eq!(
+            sig,
+            "0fd168b8ddb4876a0358a8d14d0c9f3da0e9b20c5d52b2a00fcf7d1c602f9a77"
+        );
         Ok(())
     }
 
@@ -338,7 +413,10 @@ mod test {
         let q: Vec<_> = q.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect();
         let q = q.join("&");
         let (_, sig) = tr.signature(&Url::parse("http://a.com/api/v1/test")?, &q)?;
-        assert_eq!(sig, "1ee5a75760b9496a2144a22116e02bc0b7fdcf828781fa87ca273540dfcf2cb0");
+        assert_eq!(
+            sig,
+            "1ee5a75760b9496a2144a22116e02bc0b7fdcf828781fa87ca273540dfcf2cb0"
+        );
         Ok(())
     }
 }

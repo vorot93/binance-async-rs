@@ -109,7 +109,10 @@ fn main() -> Result<()> {
 
     // Best price/qty on the order book for ONE symbol
     match rt.block_on(bn.get_book_ticker("BNBETH")?) {
-        Ok(answer) => println!("Bid Price: {}, Ask Price: {}", answer.bid_price, answer.ask_price),
+        Ok(answer) => println!(
+            "Bid Price: {}, Ask Price: {}",
+            answer.bid_price, answer.ask_price
+        ),
         Err(e) => println!("Error: {}", e),
     }
 
