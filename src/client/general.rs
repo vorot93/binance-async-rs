@@ -1,5 +1,5 @@
 use failure::{Error, Fallible};
-use futures::Future;
+use futures01::Future;
 use serde_json::Value;
 
 use crate::client::Binance;

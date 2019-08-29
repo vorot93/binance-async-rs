@@ -1,5 +1,5 @@
 use failure::{Error, Fallible};
-use futures::Future;
+use futures01::Future;
 
 use crate::client::Binance;
 use crate::model::{Success, UserDataStream};

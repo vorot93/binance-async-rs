@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use failure::{Error, Fallible};
-use futures::stream::{SplitStream, Stream};
-use futures::{Future, Poll};
+use futures01::stream::{SplitStream, Stream};
+use futures01::{Future, Poll};
 use serde_json::from_str;
-use tokio::net::TcpStream;
+use tokio01::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::Message;
 use url::Url;

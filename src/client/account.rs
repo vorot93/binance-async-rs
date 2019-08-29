@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use failure::{Error, Fallible};
-use futures::Future;
+use futures01::Future;
 use serde_json::json;
 use std::collections::HashMap;
 use sugar::{convert_args, hashmap};

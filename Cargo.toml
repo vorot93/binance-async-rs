@@ -24,14 +24,16 @@ log = "0.4"
 result = "1"
 sugar = "0.2"
 
-hyper = "0.12"
-hyper-tls = "0.3"
+hyper = "=0.13.0-alpha.1"
+hyper-tls = "0.4.0-alpha"
 tungstenite = "0.6"
 tokio-tungstenite = "0.6"
 
 url = "1"
-futures = "0.1"
-tokio = "0.1"
+futures01 = { package = "futures", version = "0.1" }
+futures-preview = { version = "0.3.0-alpha.18", features = ["compat"] }
+tokio = "0.2.0-alpha.4"
+tokio01 = { package = "tokio", version = "0.1" }
 
 chrono = { version = "0.4", features = ["serde"] }
 

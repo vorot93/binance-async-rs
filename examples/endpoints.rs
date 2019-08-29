@@ -1,83 +1,79 @@
-extern crate binance_async as binance;
-extern crate dotenv;
-extern crate env_logger;
-extern crate failure;
-extern crate tokio;
+use binance_async as binance;
 
 use std::env::var;
 
 use failure::Fallible;
-use tokio::runtime::current_thread::Runtime;
+use futures::compat::*;
 
 use crate::binance::Binance;
 
-fn main() -> Fallible<()> {
+#[tokio::main(single_thread)]
+async fn main() -> Fallible<()> {
     ::dotenv::dotenv().ok();
     ::env_logger::init();
     let api_key = var("BINANCE_KEY")?;
     let secret_key = var("BINANCE_SECRET")?;
 
-    let mut rt = Runtime::new()?;
     let bn = Binance::with_credential(&api_key, &secret_key);
 
     // General
-    match rt.block_on(bn.ping()?) {
+    match bn.ping()?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.get_server_time()?) {
+    match bn.get_server_time()?.compat().await {
         Ok(answer) => println!("Server Time: {}", answer.server_time),
         Err(e) => println!("Error: {}", e),
     }
 
     // Account
-    match rt.block_on(bn.get_account()?) {
+    match bn.get_account()?.compat().await {
         Ok(answer) => println!("{:?}", answer.balances),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.get_open_orders("WTCETH")?) {
+    match bn.get_open_orders("WTCETH")?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.limit_buy("ETHBTC", 1., 0.1)?) {
+    match bn.limit_buy("ETHBTC", 1., 0.1)?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.market_buy("WTCETH", 5.)?) {
+    match bn.market_buy("WTCETH", 5.)?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.limit_sell("WTCETH", 10., 0.035000)?) {
+    match bn.limit_sell("WTCETH", 10., 0.035000)?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.market_sell("WTCETH", 5.)?) {
+    match bn.market_sell("WTCETH", 5.)?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.order_status("WTCETH", 1_957_528)?) {
+    match bn.order_status("WTCETH", 1_957_528)?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.cancel_order("WTCETH", 1_957_528)?) {
+    match bn.cancel_order("WTCETH", 1_957_528)?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.get_balance("KNC")?) {
+    match bn.get_balance("KNC")?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match rt.block_on(bn.trade_history("WTCETH")?) {
+    match bn.trade_history("WTCETH")?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
@@ -85,31 +81,31 @@ fn main() -> Fallible<()> {
     // Market
 
     // Order book
-    match rt.block_on(bn.get_depth("BNBETH", None)?) {
+    match bn.get_depth("BNBETH", None)?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
     // Latest price for ALL symbols
-    match rt.block_on(bn.get_all_prices()?) {
+    match bn.get_all_prices()?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
     // Latest price for ONE symbol
-    match rt.block_on(bn.get_price("KNCETH")?) {
+    match bn.get_price("KNCETH")?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
     // Best price/qty on the order book for ALL symbols
-    match rt.block_on(bn.get_all_book_tickers()?) {
+    match bn.get_all_book_tickers()?.compat().await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
     // Best price/qty on the order book for ONE symbol
-    match rt.block_on(bn.get_book_ticker("BNBETH")?) {
+    match bn.get_book_ticker("BNBETH")?.compat().await {
         Ok(answer) => println!(
             "Bid Price: {}, Ask Price: {}",
             answer.bid_price, answer.ask_price
@@ -118,7 +114,7 @@ fn main() -> Fallible<()> {
     }
 
     // 24hr ticker price change statistics
-    match rt.block_on(bn.get_24h_price_stats("BNBETH")?) {
+    match bn.get_24h_price_stats("BNBETH")?.compat().await {
         Ok(answer) => println!(
             "Open Price: {}, Higher Price: {}, Lower Price: {:?}",
             answer.open_price, answer.high_price, answer.low_price
@@ -127,7 +123,11 @@ fn main() -> Fallible<()> {
     }
 
     // last 10 5min klines (candlesticks) for a symbol:
-    match rt.block_on(bn.get_klines("BNBETH", "5m", 10, None, None)?) {
+    match bn
+        .get_klines("BNBETH", "5m", 10, None, None)?
+        .compat()
+        .await
+    {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }

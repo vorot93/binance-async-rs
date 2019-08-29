@@ -1,6 +1,7 @@
 use chrono::Utc;
 use failure::{Error, Fallible};
-use futures::{Future, Stream};
+use futures::prelude::*;
+use futures01::Future;
 use hex::encode as hexify;
 use hmac::{Hmac, Mac};
 use hyper::client::{HttpConnector, ResponseFuture};
@@ -27,7 +28,7 @@ pub struct Transport {
 
 impl Transport {
     pub fn new() -> Self {
-        let https = HttpsConnector::new(4).unwrap();
+        let https = HttpsConnector::new().unwrap();
         let client = Client::builder().build::<_, Body>(https);
 
         Transport {
@@ -38,7 +39,7 @@ impl Transport {
     }
 
     pub fn with_credential(api_key: &str, api_secret: &str) -> Self {
-        let https = HttpsConnector::new(4).unwrap();
+        let https = HttpsConnector::new().unwrap();
         let client = Client::builder().build::<_, Body>(https);
 
         Transport {
@@ -252,14 +253,14 @@ impl Transport {
         &self,
         fut: ResponseFuture,
     ) -> impl Future<Item = O, Error = Error> {
-        fut.from_err::<Error>()
-            .and_then(|resp| resp.into_body().concat2().from_err::<Error>())
-            .map(|chunk| {
-                trace!("{}", String::from_utf8_lossy(&*chunk));
-                chunk
-            })
-            .and_then(|chunk| Ok(from_slice(&chunk)?))
-            .and_then(|resp: BinanceResponse<O>| Ok(resp.to_result()?))
+        async move {
+            Ok(from_slice::<BinanceResponse<_>>(
+                &fut.await?.into_body().try_concat().await?.to_vec(),
+            )?
+            .to_result()?)
+        }
+            .boxed()
+            .compat()
     }
 }
 

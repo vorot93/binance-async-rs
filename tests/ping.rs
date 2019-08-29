@@ -1,24 +1,18 @@
-extern crate binance_async as binance;
-extern crate dotenv;
-extern crate env_logger;
-extern crate failure;
-extern crate tokio;
+use binance_async as binance;
 
 use failure::Fallible;
-use tokio::runtime::Runtime;
+use futures::compat::*;
 
 use crate::binance::Binance;
 
-#[test]
-fn ping() -> Fallible<()> {
+#[tokio::test]
+async fn ping() -> Fallible<()> {
     ::dotenv::dotenv().ok();
     ::env_logger::init();
 
-    let mut rt = Runtime::new()?;
     let binance = Binance::new();
 
-    let fut = binance.ping()?;
+    binance.ping()?.compat().await?;
 
-    let _ = rt.block_on(fut)?;
     Ok(())
 }
