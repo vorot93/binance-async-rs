@@ -1,8 +1,8 @@
 use failure::{Error, Fallible};
 use futures::Future;
 
-use client::Binance;
-use model::{Success, UserDataStream};
+use crate::client::Binance;
+use crate::model::{Success, UserDataStream};
 
 static USER_DATA_STREAM: &'static str = "/api/v1/userDataStream";
 

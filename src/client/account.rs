@@ -5,9 +5,9 @@ use serde_json::json;
 use std::collections::HashMap;
 use sugar::{convert_args, hashmap};
 
-use client::Binance;
-use error::BinanceError;
-use model::{
+use crate::client::Binance;
+use crate::error::BinanceError;
+use crate::model::{
     AccountInformation, AssetDetail, Balance, DepositAddressData, DepositHistory, Order,
     OrderCanceled, TradeHistory, Transaction,
 };

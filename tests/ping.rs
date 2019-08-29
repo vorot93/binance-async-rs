@@ -7,7 +7,7 @@ extern crate tokio;
 use failure::Fallible;
 use tokio::runtime::Runtime;
 
-use binance::Binance;
+use crate::binance::Binance;
 
 #[test]
 fn ping() -> Fallible<()> {

@@ -9,7 +9,7 @@ use std::env::var;
 use failure::Fallible;
 use tokio::runtime::current_thread::Runtime;
 
-use binance::Binance;
+use crate::binance::Binance;
 
 fn main() -> Fallible<()> {
     ::dotenv::dotenv().ok();

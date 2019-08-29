@@ -2,8 +2,8 @@ use failure::{Error, Fallible};
 use futures::Future;
 use serde_json::Value;
 
-use client::Binance;
-use model::{ExchangeInfo, ExchangeInformation, ServerTime};
+use crate::client::Binance;
+use crate::model::{ExchangeInfo, ExchangeInformation, ServerTime};
 
 impl Binance {
     // Test connectivity

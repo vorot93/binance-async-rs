@@ -4,7 +4,7 @@ mod market;
 mod userstream;
 mod websocket;
 
-use transport::Transport;
+use crate::transport::Transport;
 
 #[derive(Clone)]
 pub struct Binance {

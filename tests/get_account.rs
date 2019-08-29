@@ -9,7 +9,7 @@ use std::env::var;
 use failure::Fallible;
 use tokio::runtime::Runtime;
 
-use binance::Binance;
+use crate::binance::Binance;
 
 #[test]
 fn get_account() -> Fallible<()> {

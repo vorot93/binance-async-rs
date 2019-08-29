@@ -7,8 +7,8 @@ use serde_json::json;
 use serde_json::Value;
 
 use super::Binance;
-use error::BinanceError;
-use model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker};
+use crate::error::BinanceError;
+use crate::model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker};
 
 // Market Data endpoints
 impl Binance {

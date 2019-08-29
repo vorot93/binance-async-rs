@@ -87,7 +87,7 @@ impl Stream for BinanceWebsocket {
 
         let streams = streams.into_iter().fold(
             None,
-            |acc: Option<Box<Stream<Item = BinanceWebsocketMessage, Error = Error>>>, elem| {
+            |acc: Option<Box<dyn Stream<Item = BinanceWebsocketMessage, Error = Error>>>, elem| {
                 match acc {
                     Some(stream) => Some(Box::new(stream.select(elem.from_err()))),
                     None => Some(Box::new(elem.from_err())),

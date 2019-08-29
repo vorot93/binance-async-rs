@@ -11,8 +11,8 @@ use failure::Fallible;
 use futures::{Future, Stream};
 use tokio::runtime::current_thread::Runtime;
 
-use binance::model::websocket::Subscription;
-use binance::Binance;
+use crate::binance::model::websocket::Subscription;
+use crate::binance::Binance;
 
 fn main() -> Fallible<()> {
     ::dotenv::dotenv().ok();

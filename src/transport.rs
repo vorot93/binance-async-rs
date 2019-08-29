@@ -12,7 +12,7 @@ use serde_json::{from_slice, to_string, to_value};
 use sha2::Sha256;
 use url::Url;
 
-use error::{BinanceError, BinanceResponse};
+use crate::error::{BinanceError, BinanceResponse};
 
 static BASE: &'static str = "https://www.binance.com";
 // static BASE: &'static str = "http://requestbin.fullcontact.com/199a3mf1";
