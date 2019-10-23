@@ -4,7 +4,6 @@ use std::env::var;
 
 use failure::Fallible;
 use futures::{compat::*, prelude::*};
-use futures01::{Future, Stream};
 
 use crate::binance::model::websocket::Subscription;
 use crate::binance::Binance;

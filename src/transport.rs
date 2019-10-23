@@ -4,12 +4,11 @@ use futures::prelude::*;
 use futures01::Future;
 use hex::encode as hexify;
 use hmac::{Hmac, Mac};
-use hyper::client::{HttpConnector, ResponseFuture};
-use hyper::{Body, Client, Method, Request};
-use hyper_tls::HttpsConnector;
+use http::Method;
+use reqwest_ext::RequestBuilderExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_json::{from_slice, to_string, to_value};
+use serde_json::{to_string, to_value};
 use sha2::Sha256;
 use url::Url;
 
@@ -22,28 +21,22 @@ static RECV_WINDOW: usize = 5000;
 #[derive(Clone)]
 pub struct Transport {
     credential: Option<(String, String)>,
-    client: Client<HttpsConnector<HttpConnector>>,
+    client: reqwest::Client,
     pub recv_window: usize,
 }
 
 impl Transport {
     pub fn new() -> Self {
-        let https = HttpsConnector::new().unwrap();
-        let client = Client::builder().build::<_, Body>(https);
-
         Transport {
             credential: None,
-            client: client,
+            client: reqwest::Client::builder().build().unwrap(),
             recv_window: RECV_WINDOW,
         }
     }
 
     pub fn with_credential(api_key: &str, api_secret: &str) -> Self {
-        let https = HttpsConnector::new().unwrap();
-        let client = Client::builder().build::<_, Body>(https);
-
         Transport {
-            client: client,
+            client: reqwest::Client::builder().build().unwrap(),
             credential: Some((api_key.into(), api_secret.into())),
             recv_window: RECV_WINDOW,
         }
@@ -168,26 +161,18 @@ impl Transport {
             None => "".to_string(),
         };
 
-        let mut req = Request::builder();
-        req.method(method)
-            .uri(url.as_str())
-            .header("user-agent", "binance-rs")
-            .header("content-type", "application/x-www-form-urlencoded");
+        let mut req = self.client.request(method, url.as_str())
+            .typed_header(headers::UserAgent::from_static("binance-rs"))
+            .typed_header(headers::ContentType::form_url_encoded());
 
         if let Ok((key, _)) = self.check_key() {
             // This is for user stream: user stream requests need api key in the header but no signature. WEIRD
-            req.header("X-MBX-APIKEY", key);
+            req = req.header("X-MBX-APIKEY", key);
         }
 
-        let req = req.body(Body::from(body))?;
+        let req = req.body(body);
 
-        // let req = Request::builder()
-        //     .method(method)
-        //     .uri(url.as_str())
-        //     .header("user-agent", "binance-rs")
-        //     .header("content-type", "application/x-www-form-urlencoded")
-        //     .body(Body::from(body))?;
-        Ok(self.handle_response(self.client.request(req)))
+        Ok(async move { Ok(req.send().await?.json::<BinanceResponse<_>>().await?.to_result()?) }.boxed().compat())
     }
 
     pub fn signed_request<O, Q, D>(
@@ -217,15 +202,13 @@ impl Transport {
         let (key, signature) = self.signature(&url, &body)?;
         url.query_pairs_mut().append_pair("signature", &signature);
 
-        let req = Request::builder()
-            .method(method)
-            .uri(url.as_str())
-            .header("user-agent", "binance-rs")
+        let req = self.client.request(method, url.as_str())
+            .typed_header(headers::UserAgent::from_static("binance-rs"))
+            .typed_header(headers::ContentType::form_url_encoded())
             .header("X-MBX-APIKEY", key)
-            .header("content-type", "application/x-www-form-urlencoded")
-            .body(Body::from(body))?;
+            .body(body);
 
-        Ok(self.handle_response(self.client.request(req)))
+        Ok(async move { Ok(req.send().await?.json::<BinanceResponse<_>>().await?.to_result()?) }.boxed().compat())
     }
 
     fn check_key(&self) -> Fallible<(&str, &str)> {
@@ -247,20 +230,6 @@ impl Transport {
         mac.input(sign_message.as_bytes());
         let signature = hexify(mac.result().code());
         Ok((key, signature))
-    }
-
-    fn handle_response<O: DeserializeOwned>(
-        &self,
-        fut: ResponseFuture,
-    ) -> impl Future<Item = O, Error = Error> {
-        async move {
-            Ok(from_slice::<BinanceResponse<_>>(
-                &fut.await?.into_body().try_concat().await?.to_vec(),
-            )?
-            .to_result()?)
-        }
-            .boxed()
-            .compat()
     }
 }
 
