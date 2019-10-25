@@ -2,14 +2,17 @@ use chrono::Utc;
 use failure::{Error, Fallible};
 use futures::prelude::*;
 use futures01::Future;
+use headers::*;
 use hex::encode as hexify;
 use hmac::{Hmac, Mac};
 use http::Method;
+use once_cell::sync::OnceCell;
 use reqwest_ext::RequestBuilderExt;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{to_string, to_value};
 use sha2::Sha256;
+use std::str::FromStr;
 use url::Url;
 
 use crate::error::{BinanceError, BinanceResponse};
@@ -17,6 +20,32 @@ use crate::error::{BinanceError, BinanceResponse};
 static BASE: &'static str = "https://www.binance.com";
 // static BASE: &'static str = "http://requestbin.fullcontact.com/199a3mf1";
 static RECV_WINDOW: usize = 5000;
+
+pub struct BinanceApiKey(pub String);
+
+impl headers::Header for BinanceApiKey {
+    fn name() -> &'static HeaderName {
+        static H: OnceCell<HeaderName> = OnceCell::new();
+
+        H.get_or_init(|| HeaderName::from_str("X-MBX-APIKEY").unwrap())
+    }
+
+    fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
+        where
+            Self: Sized,
+            I: Iterator<Item = &'i HeaderValue>,
+    {
+        values
+            .next()
+            .and_then(|v| v.to_str().map(ToString::to_string).ok())
+            .map(BinanceApiKey)
+            .ok_or_else(headers::Error::invalid)
+    }
+
+    fn encode<E: Extend<HeaderValue>>(&self, values: &mut E) {
+        values.extend(Some(self.0.parse().unwrap()));
+    }
+}
 
 #[derive(Clone)]
 pub struct Transport {
@@ -167,7 +196,7 @@ impl Transport {
 
         if let Ok((key, _)) = self.check_key() {
             // This is for user stream: user stream requests need api key in the header but no signature. WEIRD
-            req = req.header("X-MBX-APIKEY", key);
+            req = req.typed_header(BinanceApiKey(key.to_string()));
         }
 
         let req = req.body(body);
@@ -205,7 +234,7 @@ impl Transport {
         let req = self.client.request(method, url.as_str())
             .typed_header(headers::UserAgent::from_static("binance-rs"))
             .typed_header(headers::ContentType::form_url_encoded())
-            .header("X-MBX-APIKEY", key)
+            .typed_header(BinanceApiKey(key.to_string()))
             .body(body);
 
         Ok(async move { Ok(req.send().await?.json::<BinanceResponse<_>>().await?.to_result()?) }.boxed().compat())
