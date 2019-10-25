@@ -3,7 +3,6 @@ use failure::{Error, Fallible};
 use futures01::Future;
 use serde_json::json;
 use std::collections::HashMap;
-use sugar::{convert_args, hashmap};
 
 use crate::client::Binance;
 use crate::error::BinanceError;
@@ -226,12 +225,12 @@ impl Binance {
     }
 
     fn build_order(&self, order: OrderRequest) -> HashMap<&'static str, String> {
-        let mut params: HashMap<&str, String> = convert_args!(hashmap!(
+        let mut params: HashMap<&str, String> = maplit::hashmap! {
             "symbol" => order.symbol,
             "side" => order.order_side,
             "type" => order.order_type,
             "quantity" => order.qty.to_string(),
-        ));
+        };
 
         if order.price != 0.0 {
             params.insert("price", order.price.to_string());
