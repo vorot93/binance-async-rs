@@ -4,7 +4,7 @@ use futures01::Future;
 use crate::client::Binance;
 use crate::model::{Success, UserDataStream};
 
-static USER_DATA_STREAM: &'static str = "/api/v1/userDataStream";
+const USER_DATA_STREAM: &str = "/api/v1/userDataStream";
 
 impl Binance {
     // User Stream

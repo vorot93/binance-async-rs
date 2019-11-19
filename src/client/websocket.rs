@@ -15,7 +15,7 @@ use crate::model::websocket::{
     AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate,
 };
 
-const WS_URL: &'static str = "wss://stream.binance.com:9443/ws";
+const WS_URL: &str = "wss://stream.binance.com:9443/ws";
 
 impl Binance {
     pub fn websocket(&self) -> BinanceWebsocket {
@@ -96,7 +96,7 @@ impl Stream for BinanceWebsocket {
         );
         match streams {
             Some(mut streams) => streams.poll(),
-            None => Err(BinanceError::NoStreamSubscribed)?,
+            None => Err(BinanceError::NoStreamSubscribed.into()),
         }
     }
 }

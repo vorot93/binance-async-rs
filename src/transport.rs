@@ -17,9 +17,8 @@ use url::Url;
 
 use crate::error::{BinanceError, BinanceResponse};
 
-static BASE: &'static str = "https://www.binance.com";
-// static BASE: &'static str = "http://requestbin.fullcontact.com/199a3mf1";
-static RECV_WINDOW: usize = 5000;
+const BASE: &str = "https://www.binance.com";
+const RECV_WINDOW: usize = 5000;
 
 pub struct BinanceApiKey(pub String);
 
@@ -31,9 +30,9 @@ impl headers::Header for BinanceApiKey {
     }
 
     fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
-        where
-            Self: Sized,
-            I: Iterator<Item = &'i HeaderValue>,
+    where
+        Self: Sized,
+        I: Iterator<Item = &'i HeaderValue>,
     {
         values
             .next()
@@ -52,6 +51,12 @@ pub struct Transport {
     credential: Option<(String, String)>,
     client: reqwest::Client,
     pub recv_window: usize,
+}
+
+impl Default for Transport {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Transport {
@@ -190,7 +195,9 @@ impl Transport {
             None => "".to_string(),
         };
 
-        let mut req = self.client.request(method, url.as_str())
+        let mut req = self
+            .client
+            .request(method, url.as_str())
             .typed_header(headers::UserAgent::from_static("binance-rs"))
             .typed_header(headers::ContentType::form_url_encoded());
 
@@ -201,7 +208,16 @@ impl Transport {
 
         let req = req.body(body);
 
-        Ok(async move { Ok(req.send().await?.json::<BinanceResponse<_>>().await?.to_result()?) }.boxed().compat())
+        Ok(async move {
+            Ok(req
+                .send()
+                .await?
+                .json::<BinanceResponse<_>>()
+                .await?
+                .into_result()?)
+        }
+            .boxed()
+            .compat())
     }
 
     pub fn signed_request<O, Q, D>(
@@ -231,18 +247,29 @@ impl Transport {
         let (key, signature) = self.signature(&url, &body)?;
         url.query_pairs_mut().append_pair("signature", &signature);
 
-        let req = self.client.request(method, url.as_str())
+        let req = self
+            .client
+            .request(method, url.as_str())
             .typed_header(headers::UserAgent::from_static("binance-rs"))
             .typed_header(headers::ContentType::form_url_encoded())
             .typed_header(BinanceApiKey(key.to_string()))
             .body(body);
 
-        Ok(async move { Ok(req.send().await?.json::<BinanceResponse<_>>().await?.to_result()?) }.boxed().compat())
+        Ok(async move {
+            Ok(req
+                .send()
+                .await?
+                .json::<BinanceResponse<_>>()
+                .await?
+                .into_result()?)
+        }
+            .boxed()
+            .compat())
     }
 
     fn check_key(&self) -> Fallible<(&str, &str)> {
         match self.credential.as_ref() {
-            None => Err(BinanceError::NoApiKeySet)?,
+            None => Err(BinanceError::NoApiKeySet.into()),
             Some((k, s)) => Ok((k, s)),
         }
     }
@@ -251,10 +278,7 @@ impl Transport {
         let (key, secret) = self.check_key()?;
         // Signature: hex(HMAC_SHA256(queries + data))
         let mut mac = Hmac::<Sha256>::new_varkey(secret.as_bytes()).unwrap();
-        let sign_message = match url.query() {
-            Some(query) => format!("{}{}", query, body),
-            None => format!("{}", body),
-        };
+        let sign_message = format!("{}{}", url.query().unwrap_or(""), body);
         trace!("Sign message: {}", sign_message);
         mac.input(sign_message.as_bytes());
         let signature = hexify(mac.result().code());
@@ -266,12 +290,10 @@ trait ToUrlQuery: Serialize {
     fn to_url_query_string(&self) -> String {
         let vec = self.to_url_query();
 
-        let s = vec
-            .into_iter()
+        vec.into_iter()
             .map(|(k, v)| format!("{}={}", k, v))
             .collect::<Vec<_>>()
-            .join("&");
-        s
+            .join("&")
     }
 
     fn to_url_query(&self) -> Vec<(String, String)> {

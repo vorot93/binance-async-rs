@@ -15,7 +15,7 @@ pub enum BinanceResponse<T> {
 }
 
 impl<T: for<'a> Deserialize<'a>> BinanceResponse<T> {
-    pub fn to_result(self) -> Result<T, BinanceResponseError> {
+    pub fn into_result(self) -> Result<T, BinanceResponseError> {
         match self {
             BinanceResponse::Success(t) => Result::Ok(t),
             BinanceResponse::Error(e) => Result::Err(e),

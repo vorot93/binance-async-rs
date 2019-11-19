@@ -6,16 +6,14 @@ mod websocket;
 
 use crate::transport::Transport;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Binance {
     pub transport: Transport,
 }
 
 impl Binance {
     pub fn new() -> Self {
-        Binance {
-            transport: Transport::new(),
-        }
+        Self::default()
     }
 
     pub fn with_credential(api_key: &str, api_secret: &str) -> Self {

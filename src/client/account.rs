@@ -11,13 +11,13 @@ use crate::model::{
     OrderCanceled, TradeHistory, Transaction,
 };
 
-static ORDER_TYPE_LIMIT: &'static str = "LIMIT";
-static ORDER_TYPE_MARKET: &'static str = "MARKET";
-static ORDER_SIDE_BUY: &'static str = "BUY";
-static ORDER_SIDE_SELL: &'static str = "SELL";
-static TIME_IN_FORCE_GTC: &'static str = "GTC";
+const ORDER_TYPE_LIMIT: &str = "LIMIT";
+const ORDER_TYPE_MARKET: &str = "MARKET";
+const ORDER_SIDE_BUY: &str = "BUY";
+const ORDER_SIDE_SELL: &str = "SELL";
+const TIME_IN_FORCE_GTC: &str = "GTC";
 
-static API_V3_ORDER: &'static str = "/api/v3/order";
+const API_V3_ORDER: &str = "/api/v3/order";
 
 struct OrderRequest {
     pub symbol: String,
@@ -93,8 +93,8 @@ impl Binance {
     ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
-            qty: qty.into(),
-            price: price,
+            qty,
+            price,
             order_side: ORDER_SIDE_BUY.to_string(),
             order_type: ORDER_TYPE_LIMIT.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
@@ -115,8 +115,8 @@ impl Binance {
     ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
-            qty: qty.into(),
-            price: price,
+            qty,
+            price,
             order_side: ORDER_SIDE_SELL.to_string(),
             order_type: ORDER_TYPE_LIMIT.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
@@ -135,7 +135,7 @@ impl Binance {
     ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
-            qty: qty.into(),
+            qty,
             price: 0.0,
             order_side: ORDER_SIDE_BUY.to_string(),
             order_type: ORDER_TYPE_MARKET.to_string(),
@@ -155,7 +155,7 @@ impl Binance {
     ) -> Fallible<impl Future<Item = Transaction, Error = Error>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
-            qty: qty.into(),
+            qty,
             price: 0.0,
             order_side: ORDER_SIDE_SELL.to_string(),
             order_type: ORDER_TYPE_MARKET.to_string(),
