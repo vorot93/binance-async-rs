@@ -1,7 +1,6 @@
 use binance_async as binance;
 
 use failure::Fallible;
-use futures::compat::*;
 
 use crate::binance::Binance;
 
@@ -12,7 +11,7 @@ async fn ping() -> Fallible<()> {
 
     let binance = Binance::new();
 
-    binance.ping()?.compat().await?;
+    binance.ping()?.await?;
 
     Ok(())
 }

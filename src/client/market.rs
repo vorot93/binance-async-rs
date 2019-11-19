@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::iter::FromIterator;
 
 use failure::Fallible;
-use futures01::Future;
+use futures::prelude::*;
 use serde_json::json;
 use serde_json::Value;
 
@@ -19,7 +19,7 @@ impl Binance {
         &self,
         symbol: &str,
         limit: I,
-    ) -> Fallible<impl Future<Item = OrderBook, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<OrderBook>>>
     where
         I: Into<Option<u64>>,
     {
@@ -30,34 +30,29 @@ impl Binance {
     }
 
     // Latest price for ALL symbols.
-    pub fn get_all_prices(&self) -> Fallible<impl Future<Item = Prices, Error = failure::Error>> {
+    pub fn get_all_prices(&self) -> Fallible<impl Future<Output = Fallible<Prices>>> {
         Ok(self
             .transport
             .get::<_, ()>("/api/v1/ticker/allPrices", None)?)
     }
 
     // Latest price for ONE symbol.
-    pub fn get_price(
-        &self,
-        symbol: &str,
-    ) -> Fallible<impl Future<Item = f64, Error = failure::Error>> {
+    pub fn get_price(&self, symbol: &str) -> Fallible<impl Future<Output = Fallible<f64>>> {
         let symbol = symbol.to_string();
-        Ok(self
-            .get_all_prices()?
-            .and_then(move |Prices::AllPrices(prices)| {
-                Ok(prices
-                    .into_iter()
-                    .find(|obj| obj.symbol == symbol)
-                    .map(|par| par.price)
-                    .ok_or(Error::SymbolNotFound)?)
-            }))
+        let all_prices = self.get_all_prices()?;
+        Ok(async move {
+            let Prices::AllPrices(prices) = all_prices.await?;
+            Ok(prices
+                .into_iter()
+                .find(|obj| obj.symbol == symbol)
+                .map(|par| par.price)
+                .ok_or_else(|| Error::SymbolNotFound)?)
+        })
     }
 
     // Symbols order book ticker
     // -> Best price/qty on the order book for ALL symbols.
-    pub fn get_all_book_tickers(
-        &self,
-    ) -> Fallible<impl Future<Item = BookTickers, Error = failure::Error>> {
+    pub fn get_all_book_tickers(&self) -> Fallible<impl Future<Output = Fallible<BookTickers>>> {
         Ok(self
             .transport
             .get::<_, ()>("/api/v1/ticker/allBookTickers", None)?)
@@ -67,23 +62,25 @@ impl Binance {
     pub fn get_book_ticker(
         &self,
         symbol: &str,
-    ) -> Fallible<impl Future<Item = Ticker, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Ticker>>> {
         let symbol = symbol.to_string();
-        Ok(self.get_all_book_tickers()?.and_then(
-            move |BookTickers::AllBookTickers(book_tickers)| {
-                Ok(book_tickers
-                    .into_iter()
-                    .find(|obj| obj.symbol == symbol)
-                    .ok_or(Error::SymbolNotFound)?)
-            },
-        ))
+        let all_book_tickers = self.get_all_book_tickers()?;
+
+        Ok(async move {
+            let BookTickers::AllBookTickers(book_tickers) = all_book_tickers.await?;
+
+            Ok(book_tickers
+                .into_iter()
+                .find(|obj| obj.symbol == symbol)
+                .ok_or_else(|| Error::SymbolNotFound)?)
+        })
     }
 
     // 24hr ticker price change statistics
     pub fn get_24h_price_stats(
         &self,
         symbol: &str,
-    ) -> Fallible<impl Future<Item = PriceStats, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<PriceStats>>> {
         let params = json! {{"symbol": symbol}};
         Ok(self.transport.get("/api/v1/ticker/24hr", Some(params))?)
     }
@@ -97,7 +94,7 @@ impl Binance {
         limit: S3,
         start_time: S4,
         end_time: S5,
-    ) -> Fallible<impl Future<Item = KlineSummaries, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<KlineSummaries>>>
     where
         S3: Into<Option<u16>>,
         S4: Into<Option<u64>>,
@@ -120,35 +117,37 @@ impl Binance {
         }
         let params: HashMap<&str, String> = HashMap::from_iter(params);
 
-        let summaries =
-            self.transport
-                .get("/api/v1/klines", Some(params))?
-                .map(|data: Vec<Vec<Value>>| {
-                    KlineSummaries::AllKlineSummaries(
-                        data.iter()
-                            .map(|row| KlineSummary {
-                                open_time: to_i64(&row[0]),
-                                open: to_f64(&row[1]),
-                                high: to_f64(&row[2]),
-                                low: to_f64(&row[3]),
-                                close: to_f64(&row[4]),
-                                volume: to_f64(&row[5]),
-                                close_time: to_i64(&row[6]),
-                                quote_asset_volume: to_f64(&row[7]),
-                                number_of_trades: to_i64(&row[8]),
-                                taker_buy_base_asset_volume: to_f64(&row[9]),
-                                taker_buy_quote_asset_volume: to_f64(&row[10]),
-                            })
-                            .collect(),
-                    )
-                });
-        Ok(summaries)
+        let f = self.transport.get("/api/v1/klines", Some(params))?;
+
+        Ok({
+            async move {
+                let data: Vec<Vec<Value>> = f.await?;
+
+                Ok(KlineSummaries::AllKlineSummaries(
+                    data.iter()
+                        .map(|row| KlineSummary {
+                            open_time: to_i64(&row[0]),
+                            open: to_f64(&row[1]),
+                            high: to_f64(&row[2]),
+                            low: to_f64(&row[3]),
+                            close: to_f64(&row[4]),
+                            volume: to_f64(&row[5]),
+                            close_time: to_i64(&row[6]),
+                            quote_asset_volume: to_f64(&row[7]),
+                            number_of_trades: to_i64(&row[8]),
+                            taker_buy_base_asset_volume: to_f64(&row[9]),
+                            taker_buy_quote_asset_volume: to_f64(&row[10]),
+                        })
+                        .collect(),
+                ))
+            }
+        })
     }
 
     // 24hr ticker price change statistics
     pub fn get_24h_price_stats_all(
         &self,
-    ) -> Fallible<impl Future<Item = Vec<PriceStats>, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Vec<PriceStats>>>> {
         Ok(self.transport.get::<_, ()>("/api/v1/ticker/24hr", None)?)
     }
 }

@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use failure::Fallible;
-use futures01::Future;
+use futures::prelude::*;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -30,9 +30,7 @@ struct OrderRequest {
 
 impl Binance {
     // Account Information
-    pub fn get_account(
-        &self,
-    ) -> Fallible<impl Future<Item = AccountInformation, Error = failure::Error>> {
+    pub fn get_account(&self) -> Fallible<impl Future<Output = Fallible<AccountInformation>>> {
         let account_info = self
             .transport
             .signed_get::<_, ()>("/api/v3/account", None)?;
@@ -40,17 +38,14 @@ impl Binance {
     }
 
     // Balance for ONE Asset
-    pub fn get_balance(
-        &self,
-        asset: &str,
-    ) -> Fallible<impl Future<Item = Balance, Error = failure::Error>> {
+    pub fn get_balance(&self, asset: &str) -> Fallible<impl Future<Output = Fallible<Balance>>> {
         let asset = asset.to_string();
-        let search = move |account: AccountInformation| -> Fallible<Balance> {
+        let search = move |account: AccountInformation| {
             let balance = account
                 .balances
                 .into_iter()
                 .find(|balance| balance.asset == asset);
-            Ok(balance.ok_or(Error::AssetsNotFound)?)
+            future::ready(balance.ok_or_else(|| Error::AssetsNotFound.into()))
         };
 
         let balance = self.get_account()?.and_then(search);
@@ -61,7 +56,7 @@ impl Binance {
     pub fn get_open_orders(
         &self,
         symbol: &str,
-    ) -> Fallible<impl Future<Item = Vec<Order>, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Vec<Order>>>> {
         let params = json! {{"symbol": symbol}};
         let orders = self
             .transport
@@ -70,9 +65,7 @@ impl Binance {
     }
 
     // All current open orders
-    pub fn get_all_open_orders(
-        &self,
-    ) -> Fallible<impl Future<Item = Vec<Order>, Error = failure::Error>> {
+    pub fn get_all_open_orders(&self) -> Fallible<impl Future<Output = Fallible<Vec<Order>>>> {
         let orders = self
             .transport
             .signed_get::<_, ()>("/api/v3/openOrders", None)?;
@@ -84,7 +77,7 @@ impl Binance {
         &self,
         symbol: &str,
         order_id: u64,
-    ) -> Fallible<impl Future<Item = Order, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Order>>> {
         let params = json! {{"symbol": symbol, "orderId": order_id}};
 
         let order = self.transport.signed_get(API_V3_ORDER, Some(params))?;
@@ -97,7 +90,7 @@ impl Binance {
         symbol: &str,
         qty: f64,
         price: f64,
-    ) -> Fallible<impl Future<Item = Transaction, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty,
@@ -119,7 +112,7 @@ impl Binance {
         symbol: &str,
         qty: f64,
         price: f64,
-    ) -> Fallible<impl Future<Item = Transaction, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty,
@@ -139,7 +132,7 @@ impl Binance {
         &self,
         symbol: &str,
         qty: f64,
-    ) -> Fallible<impl Future<Item = Transaction, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
         let buy: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty,
@@ -159,7 +152,7 @@ impl Binance {
         &self,
         symbol: &str,
         qty: f64,
-    ) -> Fallible<impl Future<Item = Transaction, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
         let sell: OrderRequest = OrderRequest {
             symbol: symbol.into(),
             qty,
@@ -178,7 +171,7 @@ impl Binance {
         &self,
         symbol: &str,
         order_id: u64,
-    ) -> Fallible<impl Future<Item = OrderCanceled, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<OrderCanceled>>> {
         let params = json! {{"symbol":symbol, "orderId":order_id}};
         let order_canceled = self.transport.signed_delete(API_V3_ORDER, Some(params))?;
         Ok(order_canceled)
@@ -188,7 +181,7 @@ impl Binance {
     pub fn trade_history(
         &self,
         symbol: &str,
-    ) -> Fallible<impl Future<Item = Vec<TradeHistory>, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<Vec<TradeHistory>>>> {
         let params = json! {{"symbol":symbol}};
         let trade_history = self
             .transport
@@ -200,7 +193,7 @@ impl Binance {
     pub fn get_deposit_address(
         &self,
         symbol: &str,
-    ) -> Fallible<impl Future<Item = DepositAddressData, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<DepositAddressData>>> {
         let params = json! {{"asset":symbol}};
         let deposit_address = self
             .transport
@@ -214,7 +207,7 @@ impl Binance {
         symbol: Option<&str>,
         start_time: Option<DateTime<Utc>>,
         end_time: Option<DateTime<Utc>>,
-    ) -> Fallible<impl Future<Item = DepositHistory, Error = failure::Error>> {
+    ) -> Fallible<impl Future<Output = Fallible<DepositHistory>>> {
         let params = json! {{"asset":symbol, "startTime":start_time.map(|t| t.timestamp_millis()), "endTime":end_time.map(|t| t.timestamp_millis())}};
         let deposit_history = self
             .transport
@@ -223,9 +216,7 @@ impl Binance {
         Ok(deposit_history)
     }
 
-    pub fn asset_detail(
-        &self,
-    ) -> Fallible<impl Future<Item = AssetDetail, Error = failure::Error>> {
+    pub fn asset_detail(&self) -> Fallible<impl Future<Output = Fallible<AssetDetail>>> {
         let asset_detail = self
             .transport
             .signed_get::<_, ()>("/wapi/v3/assetDetail.html", None)?;

@@ -1,5 +1,5 @@
 use failure::Fallible;
-use futures01::Future;
+use futures::prelude::*;
 use serde_json::Value;
 
 use crate::client::Binance;
@@ -7,30 +7,24 @@ use crate::model::{ExchangeInfo, ExchangeInformation, ServerTime};
 
 impl Binance {
     // Test connectivity
-    pub fn ping(&self) -> Fallible<impl Future<Item = String, Error = failure::Error>> {
+    pub fn ping(&self) -> Fallible<impl Future<Output = Fallible<String>>> {
         Ok(self
             .transport
             .get::<_, ()>("/api/v1/ping", None)?
-            .map(|_: Value| "pong".into()))
+            .map_ok(|_: Value| "pong".into()))
     }
 
     // Check server time
-    pub fn get_server_time(
-        &self,
-    ) -> Fallible<impl Future<Item = ServerTime, Error = failure::Error>> {
+    pub fn get_server_time(&self) -> Fallible<impl Future<Output = Fallible<ServerTime>>> {
         Ok(self.transport.get::<_, ()>("/api/v1/time", None)?)
     }
 
-    pub fn get_exchange_info(
-        &self,
-    ) -> Fallible<impl Future<Item = ExchangeInfo, Error = failure::Error>> {
+    pub fn get_exchange_info(&self) -> Fallible<impl Future<Output = Fallible<ExchangeInfo>>> {
         Ok(self.transport.get::<_, ()>("/api/v1/exchangeInfo", None)?)
     }
 
     // Obtain exchange information (rate limits, symbol metadata etc)
-    pub fn exchange_info(
-        &self,
-    ) -> Fallible<impl Future<Item = ExchangeInformation, Error = failure::Error>> {
+    pub fn exchange_info(&self) -> Fallible<impl Future<Output = Fallible<ExchangeInformation>>> {
         let info = self.transport.get::<_, ()>("/api/v1/exchangeInfo", None)?;
         Ok(info)
     }

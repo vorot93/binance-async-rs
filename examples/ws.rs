@@ -3,7 +3,7 @@ use binance_async as binance;
 use std::env::var;
 
 use failure::Fallible;
-use futures::{compat::*, prelude::*};
+use futures::prelude::*;
 
 use crate::binance::model::websocket::Subscription;
 use crate::binance::Binance;
@@ -17,7 +17,7 @@ async fn main() -> Fallible<()> {
     let api_secret_user = var("BINANCE_SECRET")?;
 
     let bn = Binance::with_credential(&api_key_user, &api_secret_user);
-    match bn.user_stream_start()?.compat().await {
+    match bn.user_stream_start()?.await {
         Ok(answer) => {
             println!("Data Stream Started ...");
             let listen_key = answer.listen_key;
@@ -36,10 +36,8 @@ async fn main() -> Fallible<()> {
                 Subscription::MiniTickerAll,
                 Subscription::TickerAll,
             ] {
-                ws = ws.subscribe(sub).compat().await?;
+                ws.subscribe(sub).await?;
             }
-
-            let mut ws = ws.compat();
 
             while let Some(msg) = ws.try_next().await? {
                 println!("{:?}", msg)

@@ -1,7 +1,6 @@
 use chrono::Utc;
 use failure::Fallible;
 use futures::prelude::*;
-use futures01::Future;
 use headers::*;
 use hex::encode as hexify;
 use hmac::{Hmac, Mac};
@@ -80,7 +79,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -92,7 +91,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -104,7 +103,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -116,7 +115,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -128,7 +127,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -140,7 +139,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -152,7 +151,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -164,7 +163,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -178,7 +177,7 @@ impl Transport {
         endpoint: &str,
         params: Option<Q>,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -216,8 +215,7 @@ impl Transport {
                 .await?
                 .into_result()?)
         }
-            .boxed()
-            .compat())
+            .boxed())
     }
 
     pub fn signed_request<O, Q, D>(
@@ -226,7 +224,7 @@ impl Transport {
         endpoint: &str,
         params: Option<Q>,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
+    ) -> Fallible<impl Future<Output = Fallible<O>>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -263,8 +261,7 @@ impl Transport {
                 .await?
                 .into_result()?)
         }
-            .boxed()
-            .compat())
+            .boxed())
     }
 
     fn check_key(&self) -> Fallible<(&str, &str)> {

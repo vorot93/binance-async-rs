@@ -1,9 +1,14 @@
 use std::collections::HashMap;
 
 use failure::Fallible;
-use futures01::stream::{SplitStream, Stream};
-use futures01::{Future, Poll};
+use futures::{compat::*, prelude::*, stream::SplitStream};
+use pin_project::*;
 use serde_json::from_str;
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
+use streamunordered::{StreamUnordered, StreamYield};
 use tokio01::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::Message;
@@ -19,24 +24,26 @@ const WS_URL: &str = "wss://stream.binance.com:9443/ws";
 
 impl Binance {
     pub fn websocket(&self) -> BinanceWebsocket {
-        BinanceWebsocket {
-            subscriptions: HashMap::new(),
-        }
+        BinanceWebsocket::default()
     }
 }
 
 #[allow(dead_code)]
 type WSStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
+pub type StoredStream = SplitStream<Compat01As03Sink<WSStream, Message>>;
+
+#[pin_project]
+#[derive(Default)]
 pub struct BinanceWebsocket {
-    subscriptions: HashMap<Subscription, SplitStream<WSStream>>,
+    subscriptions: HashMap<Subscription, usize>,
+    tokens: HashMap<usize, Subscription>,
+    #[pin]
+    streams: StreamUnordered<StoredStream>,
 }
 
 impl BinanceWebsocket {
-    pub fn subscribe(
-        mut self,
-        subscription: Subscription,
-    ) -> impl Future<Item = Self, Error = failure::Error> {
+    pub async fn subscribe(&mut self, subscription: Subscription) -> Fallible<()> {
         let sub = match subscription {
             Subscription::AggregateTrade(ref symbol) => format!("{}@aggTrade", symbol),
             Subscription::Candlestick(ref symbol, ref interval) => {
@@ -55,51 +62,49 @@ impl BinanceWebsocket {
         trace!("[Websocket] Subscribing to '{:?}'", subscription);
 
         let endpoint = Url::parse(&format!("{}/{}", WS_URL, sub)).unwrap();
-        connect_async(endpoint)
-            .map(|(stream, _)| stream)
-            .map(|s| s.split().1)
-            .map(|stream| {
-                self.subscriptions.insert(subscription, stream);
-                self
-            })
-            .from_err()
+
+        let token = self.streams.push(
+            connect_async(endpoint)
+                .compat()
+                .await?
+                .0
+                .sink_compat()
+                .split()
+                .1,
+        );
+
+        self.subscriptions.insert(subscription.clone(), token);
+        self.tokens.insert(token, subscription);
+        Ok(())
     }
 
-    pub fn unsubscribe(&mut self, subscription: &Subscription) -> Option<SplitStream<WSStream>> {
-        self.subscriptions.remove(subscription)
+    pub fn unsubscribe(&mut self, subscription: &Subscription) -> Option<StoredStream> {
+        let streams = Pin::new(&mut self.streams);
+        self.subscriptions
+            .get(subscription)
+            .and_then(|token| StreamUnordered::take(streams, *token))
     }
 }
 
 impl Stream for BinanceWebsocket {
-    type Item = BinanceWebsocketMessage;
-    type Error = failure::Error;
+    type Item = Fallible<BinanceWebsocketMessage>;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        let streams: Vec<_> = self
-            .subscriptions
-            .iter_mut()
-            .map(|(sub, stream)| {
-                stream
-                    .from_err()
-                    .and_then(move |msg| parse_message(sub.clone(), msg))
-            })
-            .collect();
-
-        let streams = streams.into_iter().fold(
-            None,
-            |acc: Option<
-                Box<dyn Stream<Item = BinanceWebsocketMessage, Error = failure::Error>>,
-            >,
-             elem| {
-                match acc {
-                    Some(stream) => Some(Box::new(stream.select(elem.from_err()))),
-                    None => Some(Box::new(elem.from_err())),
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match self.as_mut().project().streams.poll_next(cx) {
+            Poll::Ready(Some((y, token))) => match y {
+                StreamYield::Item(item) => {
+                    let sub = self.tokens.get(&token).unwrap();
+                    Poll::Ready({
+                        Some(
+                            item.map_err(failure::Error::from)
+                                .and_then(|m| parse_message(sub.clone(), m)),
+                        )
+                    })
                 }
+                StreamYield::Finished(_) => Poll::Pending,
             },
-        );
-        match streams {
-            Some(mut streams) => streams.poll(),
-            None => Err(Error::NoStreamSubscribed.into()),
+            Poll::Ready(None) => Poll::Ready(Some(Err(Error::NoStreamSubscribed.into()))),
+            Poll::Pending => Poll::Pending,
         }
     }
 }
