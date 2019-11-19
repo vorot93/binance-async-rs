@@ -1,5 +1,5 @@
 use chrono::Utc;
-use failure::{Error, Fallible};
+use failure::Fallible;
 use futures::prelude::*;
 use futures01::Future;
 use headers::*;
@@ -15,7 +15,7 @@ use sha2::Sha256;
 use std::str::FromStr;
 use url::Url;
 
-use crate::error::{BinanceError, BinanceResponse};
+use crate::error::{BinanceResponse, Error};
 
 const BASE: &str = "https://www.binance.com";
 const RECV_WINDOW: usize = 5000;
@@ -80,7 +80,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -92,7 +92,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -104,7 +104,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -116,7 +116,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -128,7 +128,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -140,7 +140,7 @@ impl Transport {
         &self,
         endpoint: &str,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         D: Serialize,
@@ -152,7 +152,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -164,7 +164,7 @@ impl Transport {
         &self,
         endpoint: &str,
         params: Option<Q>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -178,7 +178,7 @@ impl Transport {
         endpoint: &str,
         params: Option<Q>,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -226,7 +226,7 @@ impl Transport {
         endpoint: &str,
         params: Option<Q>,
         data: Option<D>,
-    ) -> Fallible<impl Future<Item = O, Error = Error>>
+    ) -> Fallible<impl Future<Item = O, Error = failure::Error>>
     where
         O: DeserializeOwned,
         Q: Serialize,
@@ -269,7 +269,7 @@ impl Transport {
 
     fn check_key(&self) -> Fallible<(&str, &str)> {
         match self.credential.as_ref() {
-            None => Err(BinanceError::NoApiKeySet.into()),
+            None => Err(Error::NoApiKeySet.into()),
             Some((k, s)) => Ok((k, s)),
         }
     }

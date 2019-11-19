@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
-use failure::{Error, Fallible};
+use failure::Fallible;
 use futures01::Future;
 use serde_json::json;
 use serde_json::Value;
 
 use super::Binance;
-use crate::error::BinanceError;
+use crate::error::Error;
 use crate::model::{
     BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker,
 };
@@ -19,7 +19,7 @@ impl Binance {
         &self,
         symbol: &str,
         limit: I,
-    ) -> Fallible<impl Future<Item = OrderBook, Error = Error>>
+    ) -> Fallible<impl Future<Item = OrderBook, Error = failure::Error>>
     where
         I: Into<Option<u64>>,
     {
@@ -30,14 +30,17 @@ impl Binance {
     }
 
     // Latest price for ALL symbols.
-    pub fn get_all_prices(&self) -> Fallible<impl Future<Item = Prices, Error = Error>> {
+    pub fn get_all_prices(&self) -> Fallible<impl Future<Item = Prices, Error = failure::Error>> {
         Ok(self
             .transport
             .get::<_, ()>("/api/v1/ticker/allPrices", None)?)
     }
 
     // Latest price for ONE symbol.
-    pub fn get_price(&self, symbol: &str) -> Fallible<impl Future<Item = f64, Error = Error>> {
+    pub fn get_price(
+        &self,
+        symbol: &str,
+    ) -> Fallible<impl Future<Item = f64, Error = failure::Error>> {
         let symbol = symbol.to_string();
         Ok(self
             .get_all_prices()?
@@ -46,13 +49,15 @@ impl Binance {
                     .into_iter()
                     .find(|obj| obj.symbol == symbol)
                     .map(|par| par.price)
-                    .ok_or(BinanceError::SymbolNotFound)?)
+                    .ok_or(Error::SymbolNotFound)?)
             }))
     }
 
     // Symbols order book ticker
     // -> Best price/qty on the order book for ALL symbols.
-    pub fn get_all_book_tickers(&self) -> Fallible<impl Future<Item = BookTickers, Error = Error>> {
+    pub fn get_all_book_tickers(
+        &self,
+    ) -> Fallible<impl Future<Item = BookTickers, Error = failure::Error>> {
         Ok(self
             .transport
             .get::<_, ()>("/api/v1/ticker/allBookTickers", None)?)
@@ -62,14 +67,14 @@ impl Binance {
     pub fn get_book_ticker(
         &self,
         symbol: &str,
-    ) -> Fallible<impl Future<Item = Ticker, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Ticker, Error = failure::Error>> {
         let symbol = symbol.to_string();
         Ok(self.get_all_book_tickers()?.and_then(
             move |BookTickers::AllBookTickers(book_tickers)| {
                 Ok(book_tickers
                     .into_iter()
                     .find(|obj| obj.symbol == symbol)
-                    .ok_or(BinanceError::SymbolNotFound)?)
+                    .ok_or(Error::SymbolNotFound)?)
             },
         ))
     }
@@ -78,7 +83,7 @@ impl Binance {
     pub fn get_24h_price_stats(
         &self,
         symbol: &str,
-    ) -> Fallible<impl Future<Item = PriceStats, Error = Error>> {
+    ) -> Fallible<impl Future<Item = PriceStats, Error = failure::Error>> {
         let params = json! {{"symbol": symbol}};
         Ok(self.transport.get("/api/v1/ticker/24hr", Some(params))?)
     }
@@ -92,7 +97,7 @@ impl Binance {
         limit: S3,
         start_time: S4,
         end_time: S5,
-    ) -> Fallible<impl Future<Item = KlineSummaries, Error = Error>>
+    ) -> Fallible<impl Future<Item = KlineSummaries, Error = failure::Error>>
     where
         S3: Into<Option<u16>>,
         S4: Into<Option<u64>>,
@@ -143,7 +148,7 @@ impl Binance {
     // 24hr ticker price change statistics
     pub fn get_24h_price_stats_all(
         &self,
-    ) -> Fallible<impl Future<Item = Vec<PriceStats>, Error = Error>> {
+    ) -> Fallible<impl Future<Item = Vec<PriceStats>, Error = failure::Error>> {
         Ok(self.transport.get::<_, ()>("/api/v1/ticker/24hr", None)?)
     }
 }

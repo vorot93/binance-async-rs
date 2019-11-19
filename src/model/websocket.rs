@@ -19,6 +19,7 @@ pub enum Subscription {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum BinanceWebsocketMessage {
     UserOrderUpdate(UserOrderUpdate),
     UserAccountUpdate(AccountUpdate),

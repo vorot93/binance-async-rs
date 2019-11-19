@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use failure::{Error, Fallible};
+use failure::Fallible;
 use futures01::stream::{SplitStream, Stream};
 use futures01::{Future, Poll};
 use serde_json::from_str;
@@ -10,7 +10,7 @@ use tungstenite::Message;
 use url::Url;
 
 use crate::client::Binance;
-use crate::error::BinanceError;
+use crate::error::Error;
 use crate::model::websocket::{
     AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate,
 };
@@ -36,7 +36,7 @@ impl BinanceWebsocket {
     pub fn subscribe(
         mut self,
         subscription: Subscription,
-    ) -> impl Future<Item = Self, Error = Error> {
+    ) -> impl Future<Item = Self, Error = failure::Error> {
         let sub = match subscription {
             Subscription::AggregateTrade(ref symbol) => format!("{}@aggTrade", symbol),
             Subscription::Candlestick(ref symbol, ref interval) => {
@@ -72,7 +72,7 @@ impl BinanceWebsocket {
 
 impl Stream for BinanceWebsocket {
     type Item = BinanceWebsocketMessage;
-    type Error = Error;
+    type Error = failure::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         let streams: Vec<_> = self
@@ -87,7 +87,10 @@ impl Stream for BinanceWebsocket {
 
         let streams = streams.into_iter().fold(
             None,
-            |acc: Option<Box<dyn Stream<Item = BinanceWebsocketMessage, Error = Error>>>, elem| {
+            |acc: Option<
+                Box<dyn Stream<Item = BinanceWebsocketMessage, Error = failure::Error>>,
+            >,
+             elem| {
                 match acc {
                     Some(stream) => Some(Box::new(stream.select(elem.from_err()))),
                     None => Some(Box::new(elem.from_err())),
@@ -96,7 +99,7 @@ impl Stream for BinanceWebsocket {
         );
         match streams {
             Some(mut streams) => streams.poll(),
-            None => Err(BinanceError::NoStreamSubscribed.into()),
+            None => Err(Error::NoStreamSubscribed.into()),
         }
     }
 }

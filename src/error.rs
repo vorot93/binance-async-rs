@@ -1,8 +1,21 @@
-use serde::Deserialize;
+use {serde::Deserialize, snafu::*};
 
-#[derive(Deserialize, Serialize, Debug, Clone, Fail)]
-#[fail(display = "Binance returns error: {}", msg)]
-pub struct BinanceResponseError {
+#[derive(Deserialize, Serialize, Debug, Clone, Snafu)]
+pub enum Error {
+    #[snafu(display("Binance error: {}: {}", code, msg))]
+    BinanceError { code: i64, msg: String },
+    #[snafu(display("Assets not found"))]
+    AssetsNotFound,
+    #[snafu(display("Symbol not found"))]
+    SymbolNotFound,
+    #[snafu(display("No Api key set for private api"))]
+    NoApiKeySet,
+    #[snafu(display("No stream is subscribed"))]
+    NoStreamSubscribed,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct BinanceErrorData {
     pub code: i64,
     pub msg: String,
 }
@@ -11,26 +24,16 @@ pub struct BinanceResponseError {
 #[serde(untagged)]
 pub enum BinanceResponse<T> {
     Success(T),
-    Error(BinanceResponseError),
+    Error(BinanceErrorData),
 }
 
 impl<T: for<'a> Deserialize<'a>> BinanceResponse<T> {
-    pub fn into_result(self) -> Result<T, BinanceResponseError> {
+    pub fn into_result(self) -> Result<T, Error> {
         match self {
             BinanceResponse::Success(t) => Result::Ok(t),
-            BinanceResponse::Error(e) => Result::Err(e),
+            BinanceResponse::Error(BinanceErrorData { code, msg }) => {
+                Result::Err(Error::BinanceError { code, msg })
+            }
         }
     }
-}
-
-#[derive(Debug, Fail, Serialize, Deserialize, Clone)]
-pub enum BinanceError {
-    #[fail(display = "Assets not found")]
-    AssetsNotFound,
-    #[fail(display = "Symbol not found")]
-    SymbolNotFound,
-    #[fail(display = "No Api key set for private api")]
-    NoApiKeySet,
-    #[fail(display = "No stream is subscribed")]
-    NoStreamSubscribed,
 }
