@@ -1,15 +1,13 @@
-use std::collections::HashMap;
-use std::iter::FromIterator;
+use std::{collections::HashMap, iter::FromIterator};
 
 use failure::Fallible;
 use futures::prelude::*;
-use serde_json::json;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use super::Binance;
-use crate::error::Error;
-use crate::model::{
-    BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker,
+use crate::{
+    error::Error,
+    model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker},
 };
 
 // Market Data endpoints

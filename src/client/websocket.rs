@@ -1,23 +1,22 @@
 use std::collections::HashMap;
 
 use failure::Fallible;
-use futures::{compat::*, prelude::*, stream::SplitStream};
-use pin_project::*;
+use futures::{prelude::*, stream::SplitStream};
 use serde_json::from_str;
 use std::{
     pin::Pin,
     task::{Context, Poll},
 };
 use streamunordered::{StreamUnordered, StreamYield};
-use tokio01::net::TcpStream;
+use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tungstenite::Message;
 use url::Url;
 
-use crate::client::Binance;
-use crate::error::Error;
-use crate::model::websocket::{
-    AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate,
+use crate::{
+    client::Binance,
+    error::Error,
+    model::websocket::{AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate},
 };
 
 const WS_URL: &str = "wss://stream.binance.com:9443/ws";
@@ -31,14 +30,12 @@ impl Binance {
 #[allow(dead_code)]
 type WSStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-pub type StoredStream = SplitStream<Compat01As03Sink<WSStream, Message>>;
+pub type StoredStream = SplitStream<WSStream>;
 
-#[pin_project]
 #[derive(Default)]
 pub struct BinanceWebsocket {
     subscriptions: HashMap<Subscription, usize>,
     tokens: HashMap<usize, Subscription>,
-    #[pin]
     streams: StreamUnordered<StoredStream>,
 }
 
@@ -63,15 +60,9 @@ impl BinanceWebsocket {
 
         let endpoint = Url::parse(&format!("{}/{}", WS_URL, sub)).unwrap();
 
-        let token = self.streams.push(
-            connect_async(endpoint)
-                .compat()
-                .await?
-                .0
-                .sink_compat()
-                .split()
-                .1,
-        );
+        let token = self
+            .streams
+            .push(connect_async(endpoint).await?.0.split().1);
 
         self.subscriptions.insert(subscription.clone(), token);
         self.tokens.insert(token, subscription);
@@ -90,7 +81,7 @@ impl Stream for BinanceWebsocket {
     type Item = Fallible<BinanceWebsocketMessage>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match self.as_mut().project().streams.poll_next(cx) {
+        match Pin::new(&mut self.as_mut().get_mut().streams).poll_next(cx) {
             Poll::Ready(Some((y, token))) => match y {
                 StreamYield::Item(item) => {
                     let sub = self.tokens.get(&token).unwrap();
@@ -115,6 +106,7 @@ fn parse_message(sub: Subscription, msg: Message) -> Fallible<BinanceWebsocketMe
         Message::Binary(b) => return Ok(BinanceWebsocketMessage::Binary(b)),
         Message::Pong(..) => return Ok(BinanceWebsocketMessage::Pong),
         Message::Ping(..) => return Ok(BinanceWebsocketMessage::Ping),
+        Message::Close(..) => return Err(failure::format_err!("Socket closed")),
     };
 
     trace!("Incoming websocket message {}", msg);

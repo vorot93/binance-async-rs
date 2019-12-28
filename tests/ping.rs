@@ -6,8 +6,7 @@ use crate::binance::Binance;
 
 #[tokio::test]
 async fn ping() -> Fallible<()> {
-    ::dotenv::dotenv().ok();
-    ::env_logger::init();
+    tracing::subscriber::set_global_default(tracing_subscriber::FmtSubscriber::new()).unwrap();
 
     let binance = Binance::new();
 

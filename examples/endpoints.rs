@@ -6,10 +6,10 @@ use failure::Fallible;
 
 use crate::binance::Binance;
 
-#[tokio::main(single_thread)]
+#[tokio::main]
 async fn main() -> Fallible<()> {
-    ::dotenv::dotenv().ok();
-    ::env_logger::init();
+    tracing::subscriber::set_global_default(tracing_subscriber::FmtSubscriber::new()).unwrap();
+
     let api_key = var("BINANCE_KEY")?;
     let secret_key = var("BINANCE_SECRET")?;
 
@@ -47,7 +47,7 @@ async fn main() -> Fallible<()> {
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.limit_sell("WTCETH", 10., 0.035000)?.await {
+    match bn.limit_sell("WTCETH", 10., 0.035_000)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }

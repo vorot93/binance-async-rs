@@ -4,11 +4,13 @@ use futures::prelude::*;
 use serde_json::json;
 use std::collections::HashMap;
 
-use crate::client::Binance;
-use crate::error::Error;
-use crate::model::{
-    AccountInformation, AssetDetail, Balance, DepositAddressData, DepositHistory, Order,
-    OrderCanceled, TradeHistory, Transaction,
+use crate::{
+    client::Binance,
+    error::Error,
+    model::{
+        AccountInformation, AssetDetail, Balance, DepositAddressData, DepositHistory, Order,
+        OrderCanceled, TradeHistory, Transaction,
+    },
 };
 
 const ORDER_TYPE_LIMIT: &str = "LIMIT";

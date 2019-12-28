@@ -6,9 +6,8 @@ use hex::encode as hexify;
 use hmac::{Hmac, Mac};
 use http::Method;
 use once_cell::sync::OnceCell;
-use reqwest_ext::RequestBuilderExt;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use reqwest_ext::*;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{to_string, to_value};
 use sha2::Sha256;
 use std::str::FromStr;
@@ -214,8 +213,7 @@ impl Transport {
                 .json::<BinanceResponse<_>>()
                 .await?
                 .into_result()?)
-        }
-            .boxed())
+        })
     }
 
     pub fn signed_request<O, Q, D>(
@@ -260,8 +258,7 @@ impl Transport {
                 .json::<BinanceResponse<_>>()
                 .await?
                 .into_result()?)
-        }
-            .boxed())
+        })
     }
 
     fn check_key(&self) -> Fallible<(&str, &str)> {
@@ -318,8 +315,7 @@ impl<S: Serialize> ToUrlQuery for S {}
 mod test {
     use super::Transport;
     use failure::Fallible;
-    use url::form_urlencoded::Serializer;
-    use url::Url;
+    use url::{form_urlencoded::Serializer, Url};
 
     #[test]
     fn signature_query() -> Fallible<()> {
@@ -428,7 +424,7 @@ mod test {
             ("timestamp", "1540687064555"),
         ];
         q.sort();
-        let q: Vec<_> = q.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect();
+        let q: Vec<_> = q.iter_mut().map(|(k, v)| format!("{}={}", k, v)).collect();
         let q = q.join("&");
         let (_, sig) = tr.signature(&Url::parse("http://a.com/api/v1/test")?, &q)?;
         assert_eq!(

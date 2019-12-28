@@ -1,4 +1,5 @@
-use {serde::Deserialize, snafu::*};
+use serde::Deserialize;
+use snafu::*;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Snafu)]
 pub enum Error {

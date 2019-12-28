@@ -5,13 +5,11 @@ use std::env::var;
 use failure::Fallible;
 use futures::prelude::*;
 
-use crate::binance::model::websocket::Subscription;
-use crate::binance::Binance;
+use crate::binance::{model::websocket::Subscription, Binance};
 
-#[tokio::main(single_thread)]
+#[tokio::main]
 async fn main() -> Fallible<()> {
-    ::dotenv::dotenv().ok();
-    ::env_logger::init();
+    tracing::subscriber::set_global_default(tracing_subscriber::FmtSubscriber::new()).unwrap();
 
     let api_key_user = var("BINANCE_KEY")?;
     let api_secret_user = var("BINANCE_SECRET")?;
