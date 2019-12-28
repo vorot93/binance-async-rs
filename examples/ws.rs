@@ -8,7 +8,7 @@ use futures::prelude::*;
 use crate::binance::model::websocket::Subscription;
 use crate::binance::Binance;
 
-#[tokio::main(single_thread)]
+#[tokio::main]
 async fn main() -> Fallible<()> {
     ::dotenv::dotenv().ok();
     ::env_logger::init();

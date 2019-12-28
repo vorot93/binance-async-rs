@@ -207,15 +207,14 @@ impl Transport {
 
         let req = req.body(body);
 
-        Ok(async move {
+        Ok(Box::pin(async move {
             Ok(req
                 .send()
                 .await?
                 .json::<BinanceResponse<_>>()
                 .await?
                 .into_result()?)
-        }
-            .boxed())
+        }))
     }
 
     pub fn signed_request<O, Q, D>(
@@ -253,15 +252,14 @@ impl Transport {
             .typed_header(BinanceApiKey(key.to_string()))
             .body(body);
 
-        Ok(async move {
+        Ok(Box::pin(async move {
             Ok(req
                 .send()
                 .await?
                 .json::<BinanceResponse<_>>()
                 .await?
                 .into_result()?)
-        }
-            .boxed())
+        }))
     }
 
     fn check_key(&self) -> Fallible<(&str, &str)> {
@@ -428,7 +426,7 @@ mod test {
             ("timestamp", "1540687064555"),
         ];
         q.sort();
-        let q: Vec<_> = q.into_iter().map(|(k, v)| format!("{}={}", k, v)).collect();
+        let q: Vec<_> = q.iter_mut().map(|(k, v)| format!("{}={}", k, v)).collect();
         let q = q.join("&");
         let (_, sig) = tr.signature(&Url::parse("http://a.com/api/v1/test")?, &q)?;
         assert_eq!(

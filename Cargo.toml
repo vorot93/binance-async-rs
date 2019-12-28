@@ -22,22 +22,21 @@ path = "src/lib.rs"
 failure = "0.1"
 log = "0.4"
 
-tungstenite = "0.6"
-tokio-tungstenite = "0.6"
+tungstenite = "0.9"
+tokio-tungstenite = { git = "https://github.com/dbcfd/tokio-tungstenite", branch = "tokio2", features = ["tls"] }
 
-url = "1"
-futures-preview = { version = "0.3.0-alpha", features = ["compat"] }
-headers = "0.2"
-http = "*"
+url = "2"
+futures = { version = "0.3", features = ["compat"] }
+headers = "0.3"
+http = "0.2"
 maplit = "1"
 once_cell = "1"
 pin-project = "0.4"
-reqwest = { version = "0.10.0-alpha", features = ["json"] }
+reqwest = { git = "https://github.com/seanmonstar/reqwest", features = ["json"] }
 reqwest-ext = { git = "https://github.com/vorot93/reqwest-ext" }
 snafu = "*"
-streamunordered = "0.5.0-alpha"
-tokio = "0.2.0-alpha"
-tokio01 = { package = "tokio", version = "0.1" }
+streamunordered = "0.5"
+tokio = { version = "0.2", features = ["full"] }
 
 chrono = { version = "0.4", features = ["serde"] }
 
@@ -48,6 +47,9 @@ serde_derive = "1"
 hex = "0.3"
 sha2 = "0.8"
 hmac = "0.7"
+
+[patch.crates-io]
+reqwest = { git = "https://github.com/seanmonstar/reqwest" }
 
 [dev-dependencies]
 csv = "1"
