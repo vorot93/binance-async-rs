@@ -207,14 +207,14 @@ impl Transport {
 
         let req = req.body(body);
 
-        Ok(Box::pin(async move {
+        Ok(async move {
             Ok(req
                 .send()
                 .await?
                 .json::<BinanceResponse<_>>()
                 .await?
                 .into_result()?)
-        }))
+        })
     }
 
     pub fn signed_request<O, Q, D>(
@@ -252,14 +252,14 @@ impl Transport {
             .typed_header(BinanceApiKey(key.to_string()))
             .body(body);
 
-        Ok(Box::pin(async move {
+        Ok(async move {
             Ok(req
                 .send()
                 .await?
                 .json::<BinanceResponse<_>>()
                 .await?
                 .into_result()?)
-        }))
+        })
     }
 
     fn check_key(&self) -> Fallible<(&str, &str)> {
