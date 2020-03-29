@@ -1,14 +1,12 @@
-use std::{collections::HashMap, iter::FromIterator};
-
-use failure::Fallible;
-use futures::prelude::*;
-use serde_json::{json, Value};
-
 use super::Binance;
 use crate::{
     error::Error,
     model::{BookTickers, KlineSummaries, KlineSummary, OrderBook, PriceStats, Prices, Ticker},
 };
+use failure::Fallible;
+use futures::prelude::*;
+use serde_json::{json, Value};
+use std::{collections::HashMap, iter::FromIterator};
 
 // Market Data endpoints
 impl Binance {
@@ -42,8 +40,13 @@ impl Binance {
             let Prices::AllPrices(prices) = all_prices.await?;
             Ok(prices
                 .into_iter()
-                .find(|obj| obj.symbol == symbol)
-                .map(|par| par.price)
+                .find_map(|obj| {
+                    if obj.symbol == symbol {
+                        Some(obj.price)
+                    } else {
+                        None
+                    }
+                })
                 .ok_or_else(|| Error::SymbolNotFound)?)
         })
     }

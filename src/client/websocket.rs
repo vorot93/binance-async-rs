@@ -1,38 +1,31 @@
-use std::collections::HashMap;
-
+use crate::{
+    error::Error,
+    model::websocket::{AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate},
+};
 use failure::Fallible;
 use futures::{prelude::*, stream::SplitStream};
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 use std::{
+    collections::HashMap,
     pin::Pin,
     task::{Context, Poll},
 };
 use streamunordered::{StreamUnordered, StreamYield};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tracing::*;
 use tungstenite::Message;
 use url::Url;
 
-use crate::{
-    client::Binance,
-    error::Error,
-    model::websocket::{AccountUpdate, BinanceWebsocketMessage, Subscription, UserOrderUpdate},
-};
-
 const WS_URL: &str = "wss://stream.binance.com:9443/ws";
-
-impl Binance {
-    pub fn websocket(&self) -> BinanceWebsocket {
-        BinanceWebsocket::default()
-    }
-}
 
 #[allow(dead_code)]
 type WSStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 pub type StoredStream = SplitStream<WSStream>;
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Default)]
 pub struct BinanceWebsocket {
     subscriptions: HashMap<Subscription, usize>,
@@ -89,7 +82,7 @@ impl Stream for BinanceWebsocket {
                     Poll::Ready({
                         Some(
                             item.map_err(failure::Error::from)
-                                .and_then(|m| parse_message(sub.clone(), m)),
+                                .and_then(|m| parse_message(sub, m)),
                         )
                     })
                 }
@@ -101,7 +94,7 @@ impl Stream for BinanceWebsocket {
     }
 }
 
-fn parse_message(sub: Subscription, msg: Message) -> Fallible<BinanceWebsocketMessage> {
+fn parse_message(sub: &Subscription, msg: Message) -> Fallible<BinanceWebsocketMessage> {
     let msg = match msg {
         Message::Text(msg) => msg,
         Message::Binary(b) => return Ok(BinanceWebsocketMessage::Binary(b)),

@@ -1,9 +1,3 @@
-use chrono::prelude::*;
-use failure::Fallible;
-use futures::prelude::*;
-use serde_json::json;
-use std::collections::HashMap;
-
 use crate::{
     client::Binance,
     error::Error,
@@ -12,6 +6,11 @@ use crate::{
         OrderCanceled, TradeHistory, Transaction,
     },
 };
+use chrono::prelude::*;
+use failure::Fallible;
+use futures::prelude::*;
+use serde_json::json;
+use std::collections::HashMap;
 
 const ORDER_TYPE_LIMIT: &str = "LIMIT";
 const ORDER_TYPE_MARKET: &str = "MARKET";
@@ -93,7 +92,7 @@ impl Binance {
         qty: f64,
         price: f64,
     ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
-        let buy: OrderRequest = OrderRequest {
+        let order = OrderRequest {
             symbol: symbol.into(),
             qty,
             price,
@@ -101,7 +100,7 @@ impl Binance {
             order_type: ORDER_TYPE_LIMIT.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
         };
-        let params = self.build_order(buy);
+        let params = Self::build_order(order);
 
         let transaction = self.transport.signed_post(API_V3_ORDER, Some(params))?;
 
@@ -115,7 +114,7 @@ impl Binance {
         qty: f64,
         price: f64,
     ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
-        let sell: OrderRequest = OrderRequest {
+        let order = OrderRequest {
             symbol: symbol.into(),
             qty,
             price,
@@ -123,7 +122,7 @@ impl Binance {
             order_type: ORDER_TYPE_LIMIT.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
         };
-        let params = self.build_order(sell);
+        let params = Self::build_order(order);
         let transaction = self.transport.signed_post(API_V3_ORDER, Some(params))?;
 
         Ok(transaction)
@@ -135,7 +134,7 @@ impl Binance {
         symbol: &str,
         qty: f64,
     ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
-        let buy: OrderRequest = OrderRequest {
+        let order = OrderRequest {
             symbol: symbol.into(),
             qty,
             price: 0.0,
@@ -143,7 +142,7 @@ impl Binance {
             order_type: ORDER_TYPE_MARKET.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
         };
-        let params = self.build_order(buy);
+        let params = Self::build_order(order);
         let transaction = self.transport.signed_post(API_V3_ORDER, Some(params))?;
 
         Ok(transaction)
@@ -155,7 +154,7 @@ impl Binance {
         symbol: &str,
         qty: f64,
     ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
-        let sell: OrderRequest = OrderRequest {
+        let order = OrderRequest {
             symbol: symbol.into(),
             qty,
             price: 0.0,
@@ -163,7 +162,7 @@ impl Binance {
             order_type: ORDER_TYPE_MARKET.to_string(),
             time_in_force: TIME_IN_FORCE_GTC.to_string(),
         };
-        let params = self.build_order(sell);
+        let params = Self::build_order(order);
         let transaction = self.transport.signed_post(API_V3_ORDER, Some(params))?;
         Ok(transaction)
     }
@@ -226,7 +225,7 @@ impl Binance {
         Ok(asset_detail)
     }
 
-    fn build_order(&self, order: OrderRequest) -> HashMap<&'static str, String> {
+    fn build_order(order: OrderRequest) -> HashMap<&'static str, String> {
         let mut params: HashMap<&str, String> = maplit::hashmap! {
             "symbol" => order.symbol,
             "side" => order.order_side,

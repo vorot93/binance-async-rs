@@ -1,10 +1,7 @@
-use binance_async as binance;
-
-use std::env::var;
-
-use failure::Fallible;
-
 use crate::binance::Binance;
+use binance_async as binance;
+use failure::Fallible;
+use std::env::var;
 
 #[tokio::main]
 async fn main() -> Fallible<()> {

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use snafu::*;
 
+#[allow(clippy::pub_enum_variant_names)]
 #[derive(Deserialize, Serialize, Debug, Clone, Snafu)]
 pub enum Error {
     #[snafu(display("Binance error: {}: {}", code, msg))]
@@ -31,8 +32,8 @@ pub enum BinanceResponse<T> {
 impl<T: for<'a> Deserialize<'a>> BinanceResponse<T> {
     pub fn into_result(self) -> Result<T, Error> {
         match self {
-            BinanceResponse::Success(t) => Result::Ok(t),
-            BinanceResponse::Error(BinanceErrorData { code, msg }) => {
+            Self::Success(t) => Result::Ok(t),
+            Self::Error(BinanceErrorData { code, msg }) => {
                 Result::Err(Error::BinanceError { code, msg })
             }
         }

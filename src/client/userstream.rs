@@ -1,10 +1,9 @@
-use failure::Fallible;
-use futures::prelude::*;
-
 use crate::{
     client::Binance,
     model::{Success, UserDataStream},
 };
+use failure::Fallible;
+use futures::prelude::*;
 
 const USER_DATA_STREAM: &str = "/api/v1/userDataStream";
 

@@ -1,3 +1,4 @@
+use crate::error::{BinanceResponse, Error};
 use chrono::Utc;
 use failure::Fallible;
 use futures::prelude::*;
@@ -8,12 +9,11 @@ use http::Method;
 use once_cell::sync::OnceCell;
 use reqwest_ext::*;
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::{to_string, to_value};
+use serde_json::{to_string, to_value, Value};
 use sha2::Sha256;
 use std::str::FromStr;
+use tracing::*;
 use url::Url;
-
-use crate::error::{BinanceResponse, Error};
 
 const BASE: &str = "https://www.binance.com";
 const RECV_WINDOW: usize = 5000;
@@ -35,7 +35,7 @@ impl headers::Header for BinanceApiKey {
         values
             .next()
             .and_then(|v| v.to_str().map(ToString::to_string).ok())
-            .map(BinanceApiKey)
+            .map(Self)
             .ok_or_else(headers::Error::invalid)
     }
 
@@ -59,7 +59,7 @@ impl Default for Transport {
 
 impl Transport {
     pub fn new() -> Self {
-        Transport {
+        Self {
             credential: None,
             client: reqwest::Client::builder().build().unwrap(),
             recv_window: RECV_WINDOW,
@@ -67,7 +67,7 @@ impl Transport {
     }
 
     pub fn with_credential(api_key: &str, api_secret: &str) -> Self {
-        Transport {
+        Self {
             client: reqwest::Client::builder().build().unwrap(),
             credential: Some((api_key.into(), api_secret.into())),
             recv_window: RECV_WINDOW,
@@ -228,7 +228,7 @@ impl Transport {
         Q: Serialize,
         D: Serialize,
     {
-        let query = params.map(|q| q.to_url_query()).unwrap_or_else(|| vec![]);
+        let query = params.map_or_else(Vec::new, |q| q.to_url_query());
         let url = format!("{}{}", BASE, endpoint);
         let mut url = Url::parse_with_params(&url, &query)?;
         url.query_pairs_mut()
@@ -236,9 +236,7 @@ impl Transport {
         url.query_pairs_mut()
             .append_pair("recvWindow", &self.recv_window.to_string());
 
-        let body = data
-            .map(|data| data.to_url_query_string())
-            .unwrap_or_else(|| "".to_string());
+        let body = data.map_or_else(String::new, |data| data.to_url_query_string());
 
         let (key, signature) = self.signature(&url, &body)?;
         url.query_pairs_mut().append_pair("signature", &signature);
@@ -295,13 +293,11 @@ trait ToUrlQuery: Serialize {
         let v = v.as_object().unwrap();
         let mut vec = vec![];
 
-        for (key, value) in v.into_iter() {
-            if value.is_null() {
-                continue;
-            } else if value.is_string() {
-                vec.push((key.clone(), value.as_str().unwrap().to_string()))
-            } else {
-                vec.push((key.clone(), to_string(value).unwrap()))
+        for (key, value) in v {
+            match value {
+                Value::Null => continue,
+                Value::String(s) => vec.push((key.clone(), s.clone())),
+                other => vec.push((key.clone(), to_string(other).unwrap())),
             }
         }
 

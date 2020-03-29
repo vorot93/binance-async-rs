@@ -1,11 +1,8 @@
+use crate::binance::{model::websocket::Subscription, Binance, BinanceWebsocket};
 use binance_async as binance;
-
-use std::env::var;
-
 use failure::Fallible;
-use futures::prelude::*;
-
-use crate::binance::{model::websocket::Subscription, Binance};
+use std::env::var;
+use tokio::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Fallible<()> {
@@ -20,7 +17,7 @@ async fn main() -> Fallible<()> {
             println!("Data Stream Started ...");
             let listen_key = answer.listen_key;
 
-            let mut ws = bn.websocket();
+            let mut ws = BinanceWebsocket::default();
 
             for sub in vec![
                 Subscription::Ticker("ethbtc".to_string()),
