@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use snafu::*;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Snafu)]

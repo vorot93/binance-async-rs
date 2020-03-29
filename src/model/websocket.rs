@@ -2,6 +2,7 @@ use super::{
     string_or_float, Asks, Bids, Kline, OrderBook, OrderExecType, OrderRejectReason, OrderStatus,
     OrderType, Side, TimeInForce,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subscription {

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use failure::Fallible;
 use futures::{prelude::*, stream::SplitStream};
+use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 use std::{
     pin::Pin,
