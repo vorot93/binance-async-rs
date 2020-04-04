@@ -3,6 +3,7 @@ use super::{
     OrderType, Side, TimeInForce,
 };
 use serde::{Deserialize, Serialize};
+use failure::_core::fmt::{Formatter};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subscription {
@@ -14,8 +15,25 @@ pub enum Subscription {
     MiniTickerAll,
     Ticker(String), // symbol
     TickerAll,
-    OrderBook(String, i64), //symbol, depth
-    Depth(String),          //symbol
+    OrderBook(String, i64, UpdateSpeed), //symbol, depth
+    Depth(String, UpdateSpeed),          //symbol, update speed
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum UpdateSpeed {
+    Default,
+    Slow,
+    Fast
+}
+
+impl std::fmt::Display for UpdateSpeed {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", match self {
+            UpdateSpeed::Default=> "",
+            UpdateSpeed::Slow=> "@1000ms",
+            UpdateSpeed::Fast => "@100ms"
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

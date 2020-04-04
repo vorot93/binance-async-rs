@@ -1,4 +1,4 @@
-use crate::binance::{model::websocket::Subscription, Binance, BinanceWebsocket};
+use crate::binance::{model::websocket::{Subscription, UpdateSpeed}, Binance, BinanceWebsocket};
 use binance_async as binance;
 use failure::Fallible;
 use std::env::var;
@@ -23,9 +23,9 @@ async fn main() -> Fallible<()> {
                 Subscription::Ticker("ethbtc".to_string()),
                 Subscription::AggregateTrade("eosbtc".to_string()),
                 Subscription::Candlestick("ethbtc".to_string(), "1m".to_string()),
-                Subscription::Depth("xrpbtc".to_string()),
+                Subscription::Depth("xrpbtc".to_string(), UpdateSpeed::Default),
                 Subscription::MiniTicker("zrxbtc".to_string()),
-                Subscription::OrderBook("trxbtc".to_string(), 5),
+                Subscription::OrderBook("trxbtc".to_string(), 5, UpdateSpeed::Default),
                 Subscription::Trade("adabtc".to_string()),
                 Subscription::UserData(listen_key),
                 Subscription::MiniTickerAll,
