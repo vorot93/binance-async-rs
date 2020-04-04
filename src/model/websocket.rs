@@ -28,7 +28,7 @@ pub enum UpdateSpeed {
 
 impl std::fmt::Display for UpdateSpeed {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", match self {
+        write!(f, "{}", match self {
             UpdateSpeed::Default=> "",
             UpdateSpeed::Slow=> "@1000ms",
             UpdateSpeed::Fast => "@100ms"
