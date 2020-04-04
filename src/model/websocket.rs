@@ -15,7 +15,7 @@ pub enum Subscription {
     MiniTickerAll,
     Ticker(String), // symbol
     TickerAll,
-    OrderBook(String, i64, UpdateSpeed), //symbol, depth
+    OrderBook(String, i64, UpdateSpeed), //symbol, depth, update speed
     Depth(String, UpdateSpeed),          //symbol, update speed
 }
 
