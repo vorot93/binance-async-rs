@@ -23,6 +23,7 @@ const API_V3_ORDER: &str = "/api/v3/order";
 struct OrderRequest {
     pub symbol: String,
     pub qty: f64,
+    pub quote_qty: bool,
     pub price: f64,
     pub order_side: String,
     pub order_type: String,
@@ -95,6 +96,7 @@ impl Binance {
         let order = OrderRequest {
             symbol: symbol.into(),
             qty,
+            quote_qty: false,
             price,
             order_side: ORDER_SIDE_BUY.to_string(),
             order_type: ORDER_TYPE_LIMIT.to_string(),
@@ -117,6 +119,7 @@ impl Binance {
         let order = OrderRequest {
             symbol: symbol.into(),
             qty,
+            quote_qty: false,
             price,
             order_side: ORDER_SIDE_SELL.to_string(),
             order_type: ORDER_TYPE_LIMIT.to_string(),
@@ -129,14 +132,16 @@ impl Binance {
     }
 
     // Place a MARKET order - BUY
-    pub fn market_buy(
+    fn market_buy_generic(
         &self,
         symbol: &str,
         qty: f64,
+        quote_qty: bool,
     ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
         let order = OrderRequest {
             symbol: symbol.into(),
             qty,
+            quote_qty,
             price: 0.0,
             order_side: ORDER_SIDE_BUY.to_string(),
             order_type: ORDER_TYPE_MARKET.to_string(),
@@ -148,6 +153,22 @@ impl Binance {
         Ok(transaction)
     }
 
+    pub fn market_buy(
+        &self,
+        symbol: &str,
+        qty: f64,
+    ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
+        self.market_buy_generic(symbol, qty, false)
+    }
+
+    pub fn market_buy_quote(
+        &self,
+        symbol: &str,
+        qty: f64,
+    ) -> Fallible<impl Future<Output = Fallible<Transaction>>> {
+        self.market_buy_generic(symbol, qty, true)
+    }
+
     // Place a MARKET order - SELL
     pub fn market_sell(
         &self,
@@ -157,6 +178,7 @@ impl Binance {
         let order = OrderRequest {
             symbol: symbol.into(),
             qty,
+            quote_qty: false,
             price: 0.0,
             order_side: ORDER_SIDE_SELL.to_string(),
             order_type: ORDER_TYPE_MARKET.to_string(),
@@ -226,11 +248,16 @@ impl Binance {
     }
 
     fn build_order(order: OrderRequest) -> HashMap<&'static str, String> {
+        let quantity_key = if order.quote_qty {
+            "quoteOrderQty"
+        } else {
+            "quantity"
+        };
         let mut params: HashMap<&str, String> = maplit::hashmap! {
             "symbol" => order.symbol,
             "side" => order.order_side,
             "type" => order.order_type,
-            "quantity" => order.qty.to_string(),
+            quantity_key => order.qty.to_string(),
         };
 
         if order.price != 0.0 {
