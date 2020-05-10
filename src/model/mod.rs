@@ -395,7 +395,7 @@ pub enum SymbolFilter {
     PercentPrice {
         multiplier_up: String,
         multiplier_down: String,
-        avg_price_mins: u64
+        avg_price_mins: u64,
     },
     #[serde(rename_all = "camelCase")]
     MinNotional { min_notional: String },
