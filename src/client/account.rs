@@ -54,6 +54,20 @@ impl Binance {
         Ok(balance)
     }
 
+    pub fn get_all_balances(
+        &self,
+    ) -> Fallible<impl Future<Output = Fallible<HashMap<String, Balance>>>> {
+        let to_map = move |account: AccountInformation| {
+            let map: HashMap<String, Balance> = account
+                .balances
+                .into_iter()
+                .map(|balance| (balance.asset.clone(), balance))
+                .collect();
+            future::ready(Ok(map))
+        };
+        Ok(self.get_account()?.and_then(to_map))
+    }
+
     // Current open orders for ONE symbol
     pub fn get_open_orders(
         &self,

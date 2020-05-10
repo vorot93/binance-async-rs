@@ -21,12 +21,12 @@ impl Binance {
     }
 
     pub fn get_exchange_info(&self) -> Fallible<impl Future<Output = Fallible<ExchangeInfo>>> {
-        Ok(self.transport.get::<_, ()>("/api/v1/exchangeInfo", None)?)
+        Ok(self.transport.get::<_, ()>("/api/v3/exchangeInfo", None)?)
     }
 
     // Obtain exchange information (rate limits, symbol metadata etc)
     pub fn exchange_info(&self) -> Fallible<impl Future<Output = Fallible<ExchangeInformation>>> {
-        let info = self.transport.get::<_, ()>("/api/v1/exchangeInfo", None)?;
+        let info = self.transport.get::<_, ()>("/api/v3/exchangeInfo", None)?;
         Ok(info)
     }
 }

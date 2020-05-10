@@ -380,17 +380,29 @@ pub enum SymbolFilter {
         step_size: String,
     },
     #[serde(rename_all = "camelCase")]
+    MarketLotSize {
+        min_qty: String,
+        max_qty: String,
+        step_size: String,
+    },
+    #[serde(rename_all = "camelCase")]
     PriceFilter {
         min_price: String,
         max_price: String,
         tick_size: String,
     },
     #[serde(rename_all = "camelCase")]
+    PercentPrice {
+        multiplier_up: String,
+        multiplier_down: String,
+        avg_price_mins: u64
+    },
+    #[serde(rename_all = "camelCase")]
     MinNotional { min_notional: String },
     #[serde(rename_all = "camelCase")]
     MaxNumAlgoOrders { max_num_algo_orders: u64 },
     #[serde(rename_all = "camelCase")]
-    MaxNumOrders { limit: u64 },
+    MaxNumOrders { max_num_orders: u64 },
     #[serde(rename_all = "camelCase")]
     IcebergParts { limit: u64 },
 }
