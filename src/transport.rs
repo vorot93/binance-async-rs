@@ -12,7 +12,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{to_string, to_value, Value};
 use sha2::Sha256;
 use std::str::FromStr;
-use tracing::{Callsite, Subscriber, callsite, trace};
+use tracing::{callsite, trace, Callsite, Subscriber};
 use url::Url;
 
 const BASE: &str = "https://www.binance.com";
