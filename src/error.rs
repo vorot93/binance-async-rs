@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use snafu::*;
+use snafu::Snafu;
 
 #[allow(clippy::pub_enum_variant_names)]
 #[derive(Deserialize, Serialize, Debug, Clone, Snafu)]
