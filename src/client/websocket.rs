@@ -14,7 +14,7 @@ use std::{
 use streamunordered::{StreamUnordered, StreamYield};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
-use tracing::*;
+use tracing::{callsite, trace};
 use tungstenite::Message;
 use url::Url;
 
@@ -40,10 +40,14 @@ impl BinanceWebsocket {
             Subscription::Candlestick(ref symbol, ref interval) => {
                 format!("{}@kline_{}", symbol, interval)
             }
-            Subscription::Depth(ref symbol) => format!("{}@depth", symbol),
+            Subscription::Depth(ref symbol, ref update_speed) => {
+                format!("{}@depth{}", symbol, update_speed)
+            }
             Subscription::MiniTicker(ref symbol) => format!("{}@miniTicker", symbol),
             Subscription::MiniTickerAll => "!miniTicker@arr".to_string(),
-            Subscription::OrderBook(ref symbol, depth) => format!("{}@depth{}", symbol, depth),
+            Subscription::OrderBook(ref symbol, depth, ref update_speed) => {
+                format!("{}@depth{}{}", symbol, depth, update_speed)
+            }
             Subscription::Ticker(ref symbol) => format!("{}@ticker", symbol),
             Subscription::TickerAll => "!ticker@arr".to_string(),
             Subscription::Trade(ref symbol) => format!("{}@trade", symbol),

@@ -77,6 +77,28 @@ pub struct Transaction {
     pub order_id: u64,
     pub client_order_id: String,
     pub transact_time: u64,
+    #[serde(with = "string_or_float")]
+    pub price: f64,
+    #[serde(with = "string_or_float")]
+    pub orig_qty: f64,
+    #[serde(with = "string_or_float")]
+    pub executed_qty: f64,
+    #[serde(with = "string_or_float")]
+    pub cummulative_quote_qty: f64,
+    pub status: String,
+    pub fills: Vec<Fill>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Fill {
+    #[serde(with = "string_or_float")]
+    pub price: f64,
+    #[serde(with = "string_or_float")]
+    pub qty: f64,
+    #[serde(with = "string_or_float")]
+    pub commission: f64,
+    pub commission_asset: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -85,10 +107,6 @@ pub struct Bids {
     pub price: f64,
     #[serde(with = "string_or_float")]
     pub qty: f64,
-
-    // Never serialized.
-    #[serde(skip_serializing)]
-    ignore: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -97,10 +115,6 @@ pub struct Asks {
     pub price: f64,
     #[serde(with = "string_or_float")]
     pub qty: f64,
-
-    // Never serialized.
-    #[serde(skip_serializing)]
-    ignore: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -366,17 +380,29 @@ pub enum SymbolFilter {
         step_size: String,
     },
     #[serde(rename_all = "camelCase")]
+    MarketLotSize {
+        min_qty: String,
+        max_qty: String,
+        step_size: String,
+    },
+    #[serde(rename_all = "camelCase")]
     PriceFilter {
         min_price: String,
         max_price: String,
         tick_size: String,
     },
     #[serde(rename_all = "camelCase")]
+    PercentPrice {
+        multiplier_up: String,
+        multiplier_down: String,
+        avg_price_mins: u64,
+    },
+    #[serde(rename_all = "camelCase")]
     MinNotional { min_notional: String },
     #[serde(rename_all = "camelCase")]
     MaxNumAlgoOrders { max_num_algo_orders: u64 },
     #[serde(rename_all = "camelCase")]
-    MaxNumOrders { limit: u64 },
+    MaxNumOrders { max_num_orders: u64 },
     #[serde(rename_all = "camelCase")]
     IcebergParts { limit: u64 },
 }
