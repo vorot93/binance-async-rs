@@ -2,7 +2,7 @@ use crate::binance::{model::websocket::Subscription, Binance, BinanceWebsocket};
 use binance_async as binance;
 use failure::Fallible;
 use std::env::var;
-use tokio::stream::StreamExt;
+use futures::TryStreamExt;
 
 #[tokio::main]
 async fn main() -> Fallible<()> {
@@ -35,7 +35,7 @@ async fn main() -> Fallible<()> {
             }
 
             while let Some(msg) = ws.try_next().await? {
-                println!("{:?}", msg)
+                println!("\n\n{:?}", msg)
             }
         }
         Err(e) => println!("Error obtaining userstream: {}", e),
