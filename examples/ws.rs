@@ -1,8 +1,8 @@
 use crate::binance::{model::websocket::Subscription, Binance, BinanceWebsocket};
 use binance_async as binance;
 use failure::Fallible;
-use std::env::var;
 use futures::TryStreamExt;
+use std::env::var;
 
 #[tokio::main]
 async fn main() -> Fallible<()> {

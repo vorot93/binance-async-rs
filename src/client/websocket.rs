@@ -13,7 +13,7 @@ use std::{
 };
 use streamunordered::{StreamUnordered, StreamYield};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream, tungstenite::Message};
+use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use tracing::*;
 use url::Url;
 
