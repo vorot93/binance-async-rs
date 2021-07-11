@@ -13,29 +13,28 @@ async fn main() -> Fallible<()> {
 
     let bn = Binance::with_credential(&api_key_user, &api_secret_user);
     match bn.user_stream_start()?.await {
-        Ok(answer) => {
+        Ok(_) => {
             println!("Data Stream Started ...");
-            let listen_key = answer.listen_key;
 
             let mut ws = BinanceWebsocket::default();
 
             for sub in vec![
-                Subscription::Ticker("ethbtc".to_string()),
-                Subscription::AggregateTrade("eosbtc".to_string()),
-                Subscription::Candlestick("ethbtc".to_string(), "1m".to_string()),
-                Subscription::Depth("xrpbtc".to_string()),
-                Subscription::MiniTicker("zrxbtc".to_string()),
-                Subscription::OrderBook("trxbtc".to_string(), 5),
-                Subscription::Trade("adabtc".to_string()),
-                Subscription::UserData(listen_key),
-                Subscription::MiniTickerAll,
-                Subscription::TickerAll,
+                // Subscription::Ticker("btcusdt.to_string()),
+                // Subscription::AggregateTrade("btcusdt.to_string()),
+                // Subscription::Candlestick("btcusdt".to_string(), "1m".to_string()),
+                // Subscription::Depth("btcusdt".to_string()),
+                // Subscription::MiniTicker("btcusdt".to_string()),
+                // Subscription::OrderBook("btcusdt".to_string(), 10),
+                Subscription::Trade("btcusdt".to_string()),
+                // Subscription::UserData(listen_key),
+                // Subscription::MiniTickerAll,
+                // Subscription::TickerAll,
             ] {
                 ws.subscribe(sub).await?;
             }
 
             while let Some(msg) = ws.try_next().await? {
-                println!("\n\n{:?}", msg)
+                println!("\n\n{:#?}", msg)
             }
         }
         Err(e) => println!("Error obtaining userstream: {}", e),
