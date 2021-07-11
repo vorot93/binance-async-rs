@@ -87,7 +87,7 @@ pub struct Bids {
     pub qty: f64,
 
     // Never serialized.
-    #[serde(skip_serializing)]
+    #[serde(skip)]
     ignore: Vec<String>,
 }
 
@@ -99,7 +99,7 @@ pub struct Asks {
     pub qty: f64,
 
     // Never serialized.
-    #[serde(skip_serializing)]
+    #[serde(skip)]
     ignore: Vec<String>,
 }
 

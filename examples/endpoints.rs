@@ -29,47 +29,47 @@ async fn main() -> Fallible<()> {
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.get_open_orders("WTCETH")?.await {
+    match bn.get_open_orders("BTCUSDT")?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.limit_buy("ETHBTC", 1., 0.1)?.await {
+    match bn.limit_buy("BTCUSDT", 1., 0.1)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.market_buy("WTCETH", 5.)?.await {
+    match bn.market_buy("BTCUSDT", 5.)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.limit_sell("WTCETH", 10., 0.035_000)?.await {
+    match bn.limit_sell("BTCUSDT", 10., 0.035_000)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.market_sell("WTCETH", 5.)?.await {
+    match bn.market_sell("BTCUSDT", 5.)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.order_status("WTCETH", 1_957_528)?.await {
+    match bn.order_status("BTCUSDT", 1_957_528)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.cancel_order("WTCETH", 1_957_528)?.await {
+    match bn.cancel_order("BTCUSDT", 1_957_528)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.get_balance("KNC")?.await {
+    match bn.get_balance("BTC")?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
 
-    match bn.trade_history("WTCETH")?.await {
+    match bn.trade_history("BTCUSDT")?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
@@ -77,7 +77,7 @@ async fn main() -> Fallible<()> {
     // Market
 
     // Order book
-    match bn.get_depth("BNBETH", None)?.await {
+    match bn.get_depth("BTCUSDT", None)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
@@ -89,7 +89,7 @@ async fn main() -> Fallible<()> {
     }
 
     // Latest price for ONE symbol
-    match bn.get_price("KNCETH")?.await {
+    match bn.get_price("BTCUSDT")?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }
@@ -101,7 +101,7 @@ async fn main() -> Fallible<()> {
     }
 
     // Best price/qty on the order book for ONE symbol
-    match bn.get_book_ticker("BNBETH")?.await {
+    match bn.get_book_ticker("BTCUSDT")?.await {
         Ok(answer) => println!(
             "Bid Price: {}, Ask Price: {}",
             answer.bid_price, answer.ask_price
@@ -110,7 +110,7 @@ async fn main() -> Fallible<()> {
     }
 
     // 24hr ticker price change statistics
-    match bn.get_24h_price_stats("BNBETH")?.await {
+    match bn.get_24h_price_stats("BTCUSDT")?.await {
         Ok(answer) => println!(
             "Open Price: {}, Higher Price: {}, Lower Price: {:?}",
             answer.open_price, answer.high_price, answer.low_price
@@ -119,7 +119,7 @@ async fn main() -> Fallible<()> {
     }
 
     // last 10 5min klines (candlesticks) for a symbol:
-    match bn.get_klines("BNBETH", "5m", 10, None, None)?.await {
+    match bn.get_klines("BTCUSDT", "5m", 10, None, None)?.await {
         Ok(answer) => println!("{:?}", answer),
         Err(e) => println!("Error: {}", e),
     }

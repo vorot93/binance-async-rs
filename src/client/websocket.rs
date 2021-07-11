@@ -13,9 +13,8 @@ use std::{
 };
 use streamunordered::{StreamUnordered, StreamYield};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use tracing::*;
-use tungstenite::Message;
 use url::Url;
 
 const WS_URL: &str = "wss://stream.binance.com:9443/ws";
@@ -56,7 +55,7 @@ impl BinanceWebsocket {
 
         let token = self
             .streams
-            .push(connect_async(endpoint).await?.0.split().1);
+            .insert(connect_async(endpoint).await?.0.split().1);
 
         self.subscriptions.insert(subscription.clone(), token);
         self.tokens.insert(token, subscription);
